@@ -80,39 +80,73 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-8">AI辩论平台</h1>
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      <div className="max-w-6xl mx-auto px-4 py-8 md:py-12">
+        {/* 仅在没有活跃辩论时显示标题和介绍 */}
+        {!session && !loading && (
+          <div className="text-center mb-12">
+            <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-700 mb-4">
+              Cortex - 思辨
+            </h1>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              见证两个AI智能体就各种话题展开思想碰撞，探索不同观点与立场的精彩交锋
+            </p>
+          </div>
+        )}
         
         {error && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-300 rounded-lg text-center text-red-700">
-            {error}
+          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl text-center text-red-700 shadow-sm">
+            <div className="flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              {error}
+            </div>
           </div>
         )}
         
         {loading && !session && (
-          <div className="text-center py-10">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
-            <p className="mt-2">正在生成辩论...</p>
+          <div className="text-center py-16">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+            <p className="mt-4 text-lg text-indigo-700">正在生成辩论...</p>
           </div>
         )}
         
         {!session && !loading ? (
-          <DebateForm onStartDebate={handleStartDebate} />
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <DebateForm onStartDebate={handleStartDebate} />
+          </div>
         ) : session ? (
-          <DebateViewer 
-            session={session} 
-            onContinueDebate={handleContinueDebate} 
-            onReset={handleReset}
-            key={`debate-${session.topic}-${initialAutoMode ? 'auto' : 'manual'}`}
-            initialAutoMode={initialAutoMode}
-          />
+          <div className="bg-white rounded-2xl shadow-xl p-6">
+            <DebateViewer 
+              session={session} 
+              onContinueDebate={handleContinueDebate} 
+              onReset={handleReset}
+              key={`debate-${session.topic}-${initialAutoMode ? 'auto' : 'manual'}`}
+              initialAutoMode={initialAutoMode}
+            />
+          </div>
         ) : null}
         
-        <div className="mt-8 text-center text-sm text-gray-500">
-          <p>本平台使用OpenAI的gpt-4o-mini模型提供AI辩论服务</p>
-          <p className="mt-1">AI笔记本会自动保存，可在<Link href="/notebooks" className="text-blue-500 hover:underline">笔记本管理</Link>中查看</p>
-        </div>
+        {/* 仅在没有活跃辩论时显示页脚说明 */}
+        {!session && (
+          <div className="mt-12 text-center">
+            <div className="flex items-center justify-center gap-2 text-indigo-600 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+              </svg>
+              <span className="font-medium">使用指南</span>
+            </div>
+            <p className="text-gray-600">本平台使用OpenAI的gpt-4o模型提供AI辩论服务</p>
+            <p className="mt-2 text-gray-600">
+              AI笔记本会自动保存，可在
+              <Link href="/notebooks" className="text-indigo-600 hover:text-indigo-800 hover:underline font-medium ml-1">
+                笔记本管理
+              </Link>
+              中查看
+            </p>
+          </div>
+        )}
       </div>
     </main>
   );

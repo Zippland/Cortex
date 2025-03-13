@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI辩论平台",
+  title: "Cortex",
   description: "让AI以不同角色参与辩论，探索思维碰撞的火花",
 };
 
@@ -32,7 +32,7 @@ export default function RootLayout({
           <nav className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
             <div className="flex items-center space-x-1">
               <Link href="/" className="font-bold text-lg text-blue-600">
-                AI辩论平台
+              Cortex
               </Link>
             </div>
             <div className="flex space-x-4">
@@ -50,7 +50,7 @@ export default function RootLayout({
         </main>
         <footer className="py-4 border-t border-gray-200">
           <div className="max-w-6xl mx-auto px-4 text-center text-sm text-gray-500">
-            <p>© {new Date().getFullYear()} AI辩论平台 - 笔记本持久化版</p>
+            <p>© {new Date().getFullYear()} Cortex - 笔记本持久化版</p>
           </div>
         </footer>
       </body>

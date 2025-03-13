@@ -49,34 +49,54 @@ ${currentNotebook || "（尚无内容）"}
 async function updateSingleNotebook(
   ai: AIModel, 
   topic: string, 
-  recentMessages: DebateMessage[]
+  recentMessages: DebateMessage[],
+  retryCount: number = 2  // 添加重试次数参数
 ): Promise<string> {
-  // 从文件读取当前笔记本内容
+  // 从文件读取当前笔记本内容，放在try外部以便catch块中可以访问
   const currentNotebook = readNotebookFromFile(ai, topic);
   
-  // 创建消息列表，包含系统提示和最近的消息
-  const messages: DebateMessage[] = [
-    {
-      role: 'system',
-      content: createNotebookUpdatePrompt(ai, topic, currentNotebook)
-    },
-    {
-      role: 'user',
-      content: `请根据以下最近的辩论内容，更新你的笔记本。保持客观分析，突出关键点，并充分体现${ai.name}的视角和立场：
+  try {
+    // 创建消息列表，包含系统提示和最近的消息
+    const messages: DebateMessage[] = [
+      {
+        role: 'system',
+        content: createNotebookUpdatePrompt(ai, topic, currentNotebook)
+      },
+      {
+        role: 'user',
+        content: `请根据以下最近的辩论内容，更新你的笔记本。保持客观分析，突出关键点，并充分体现${ai.name}的视角和立场：
 
 ${recentMessages.map(msg => `${msg.name || msg.role}: ${msg.content}`).join('\n\n')}
 
 请直接提供更新后的笔记本内容，不要有其他回复。记住，这是你的私人笔记，你可以自由表达你的真实立场和策略思考。`
-    }
-  ];
+      }
+    ];
 
-  // 获取AI的回复作为更新后的笔记本
-  const updatedNotebook = await getAIResponse(messages);
-  
-  // 将更新后的笔记本内容写入文件
-  writeNotebookToFile(ai, topic, updatedNotebook);
-  
-  return updatedNotebook;
+    // 获取AI的回复作为更新后的笔记本
+    const updatedNotebook = await getAIResponse(messages);
+    
+    // 检查回复内容是否有效
+    if (!updatedNotebook || updatedNotebook.includes('抱歉，AI回复生成失败')) {
+      throw new Error('获取AI回复失败');
+    }
+    
+    // 将更新后的笔记本内容写入文件
+    writeNotebookToFile(ai, topic, updatedNotebook);
+    
+    return updatedNotebook;
+  } catch (error) {
+    console.error(`更新${ai.name}笔记本失败:`, error);
+    
+    // 如果还有重试次数，尝试重试
+    if (retryCount > 0) {
+      console.log(`尝试重新更新${ai.name}笔记本，剩余重试次数: ${retryCount}`);
+      // 递减重试次数并再次尝试
+      return await updateSingleNotebook(ai, topic, recentMessages, retryCount - 1);
+    }
+    
+    // 没有重试次数或重试失败，返回当前笔记本内容
+    return currentNotebook || `${ai.name}的笔记本更新失败。将在下次更新时重试。`;
+  }
 }
 
 /**
@@ -96,19 +116,41 @@ export async function updateNotebooksIfNeeded(session: DebateSession): Promise<D
     session.lastNotebookUpdateCount || 0
   );
 
-  // 并行更新两个AI的笔记本
-  const [updatedAi1Notebook, updatedAi2Notebook] = await Promise.all([
-    updateSingleNotebook(session.ai1, session.topic, messagesToProcess),
-    updateSingleNotebook(session.ai2, session.topic, messagesToProcess)
-  ]);
+  // 独立更新两个AI的笔记本，避免一个失败影响另一个
+  let updatedAi1Notebook = session.ai1Notebook || "";
+  let updatedAi2Notebook = session.ai2Notebook || "";
+  let updateSuccess = false;
+  
+  try {
+    // 更新AI1的笔记本
+    const ai1NotebookResult = await updateSingleNotebook(session.ai1, session.topic, messagesToProcess);
+    updatedAi1Notebook = ai1NotebookResult;
+    updateSuccess = true;
+  } catch (error) {
+    console.error(`最终更新AI1笔记本失败:`, error);
+    // 保留原笔记本内容
+  }
+  
+  try {
+    // 更新AI2的笔记本
+    const ai2NotebookResult = await updateSingleNotebook(session.ai2, session.topic, messagesToProcess);
+    updatedAi2Notebook = ai2NotebookResult;
+    updateSuccess = true;
+  } catch (error) {
+    console.error(`最终更新AI2笔记本失败:`, error);
+    // 保留原笔记本内容
+  }
+
+  // 只有至少有一个笔记本更新成功，才更新lastNotebookUpdateCount
+  const lastUpdateCount = updateSuccess ? session.messages.length : (session.lastNotebookUpdateCount || 0);
 
   // 更新会话对象，设置需要用户确认
   return {
     ...session,
     ai1Notebook: updatedAi1Notebook,
     ai2Notebook: updatedAi2Notebook,
-    lastNotebookUpdateCount: session.messages.length,
-    userConfirmationNeeded: true // 添加用户确认标记
+    lastNotebookUpdateCount: lastUpdateCount,
+    userConfirmationNeeded: updateSuccess // 只有在成功更新时才需要用户确认
   };
 }
 

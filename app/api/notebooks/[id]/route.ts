@@ -11,7 +11,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    // 在Next.js 15中，params是一个Promise对象，需要先await
+    const { id } = await params;
     
     // 防止目录遍历攻击
     if (id.includes('..') || id.includes('/') || id.includes('\\')) {
@@ -50,7 +51,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    // 在Next.js 15中，params是一个Promise对象，需要先await
+    const { id } = await params;
     
     // 防止目录遍历攻击
     if (id.includes('..') || id.includes('/') || id.includes('\\')) {
