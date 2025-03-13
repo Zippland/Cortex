@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAIResponse } from '../../../utils/openai';
 import { DebateMessage, DebateSession } from '../../../models/types';
+import { updateNotebooksIfNeeded, getMessagesWithNotebook } from '../../../utils/notebook';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,6 +20,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ session });
     }
 
+    // 重置用户确认状态
+    session.userConfirmationNeeded = false;
+
     // 确定当前发言的AI
     const currentRound = session.currentRound;
     const isFirstAITurn = session.messages.length % 2 === 1; // 主席开场后，第一个AI发言
@@ -26,47 +30,16 @@ export async function POST(request: NextRequest) {
     const currentAI = isFirstAITurn ? session.ai1 : session.ai2;
     const otherAI = isFirstAITurn ? session.ai2 : session.ai1;
 
-    // 为当前AI创建增强版系统提示
-    const enhancedSystemPrompt = `${currentAI.systemPrompt}
+    // 根据需要更新笔记本
+    const sessionWithUpdatedNotebooks = await updateNotebooksIfNeeded(session);
 
-辩论信息：
-- 辩题: "${session.topic}"
-- 你的角色: ${currentAI.name}
-- 对方角色: ${otherAI.name}
-- 当前回合: ${currentRound + 1}/${session.rounds}
-
-请根据之前的对话历史，作为${currentAI.name}参与辩论。`;
-
-    // 准备AI的系统消息
-    const systemMessage: DebateMessage = {
-      role: 'system',
-      content: enhancedSystemPrompt
-    };
-
-    // 构建完整的对话历史，并根据发言者角色调整role
-    const conversationHistory: DebateMessage[] = [];
-    
-    // 首先添加系统消息
-    conversationHistory.push(systemMessage);
-    
-    // 然后添加所有历史消息，根据发言者正确设置角色
-    for (const message of session.messages) {
-      // 跳过系统消息
-      if (message.role === 'system') continue;
-      
-      // 对于每条消息，判断是否是当前发言AI的消息
-      const isCurrentAISpeaking = message.name === currentAI.name;
-      const speakerName = message.name || '未知说话者';
-      
-      // 在消息内容前添加说话者名称，而不是使用name字段
-      const contentWithSpeaker = `【${speakerName}】: ${message.content}`;
-      
-      // 添加到对话历史，根据说话者设置正确的角色
-      conversationHistory.push({
-        role: isCurrentAISpeaking ? 'assistant' : 'user',
-        content: contentWithSpeaker
-      });
+    // 如果笔记本更新后设置了需要用户确认，则返回当前会话
+    if (sessionWithUpdatedNotebooks.userConfirmationNeeded) {
+      return NextResponse.json({ session: sessionWithUpdatedNotebooks });
     }
+
+    // 使用笔记本获取消息历史
+    const messagesWithNotebook = getMessagesWithNotebook(sessionWithUpdatedNotebooks, currentAI);
 
     // 添加最终提示消息
     let finalPrompt = "";
@@ -79,14 +52,17 @@ export async function POST(request: NextRequest) {
       finalPrompt = `请你作为${currentAI.name}，针对辩题"${session.topic}"开始辩论，阐述你的初始观点。不要在回复开头重复你的角色名称，直接开始你的论述。`;
     }
     
-    // 将最终提示添加到对话历史
-    conversationHistory.push({
-      role: 'user',
-      content: finalPrompt
-    });
+    // 将最终提示添加到消息列表
+    const fullMessages: DebateMessage[] = [
+      ...messagesWithNotebook,
+      {
+        role: 'user' as const,
+        content: finalPrompt
+      }
+    ];
 
     // 获取AI回复
-    const aiResponse = await getAIResponse(conversationHistory);
+    const aiResponse = await getAIResponse(fullMessages);
 
     // 更新会话
     const newMessage: DebateMessage = {
@@ -95,27 +71,20 @@ export async function POST(request: NextRequest) {
       name: currentAI.name
     };
     
-    const updatedMessages: DebateMessage[] = [...session.messages, newMessage];
+    const updatedMessages: DebateMessage[] = [...sessionWithUpdatedNotebooks.messages, newMessage];
 
-    // 检查是否需要更新回合数
+    // 更新回合数
     let updatedRound = currentRound;
-    let isComplete = false;
-
     if (!isFirstAITurn) {
       updatedRound += 1;
-      
-      // 检查辩论是否结束
-      if (updatedRound >= session.rounds) {
-        isComplete = true;
-      }
     }
 
     // 更新会话
     const updatedSession: DebateSession = {
-      ...session,
+      ...sessionWithUpdatedNotebooks,
       currentRound: updatedRound,
       messages: updatedMessages,
-      isComplete
+      isComplete: false // 辩论不再基于回合数自动结束
     };
 
     return NextResponse.json({ session: updatedSession });

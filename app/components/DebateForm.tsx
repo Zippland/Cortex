@@ -4,14 +4,14 @@ import { useState, useEffect } from 'react';
 import { AIModel } from '../models/types';
 
 interface DebateFormProps {
-  onStartDebate: (topic: string, ai1Id: string, ai2Id: string, rounds: number) => void;
+  onStartDebate: (topic: string, ai1Id: string, ai2Id: string, autoMode: boolean) => void;
 }
 
 export default function DebateForm({ onStartDebate }: DebateFormProps) {
   const [topic, setTopic] = useState('');
   const [ai1Id, setAi1Id] = useState('');
   const [ai2Id, setAi2Id] = useState('');
-  const [rounds, setRounds] = useState(3);
+  const [autoMode, setAutoMode] = useState(false);
   const [models, setModels] = useState<AIModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -54,7 +54,12 @@ export default function DebateForm({ onStartDebate }: DebateFormProps) {
       return;
     }
     
-    onStartDebate(topic, ai1Id, ai2Id, rounds);
+    onStartDebate(topic, ai1Id, ai2Id, autoMode);
+  };
+
+  // 切换自动模式
+  const toggleAutoMode = () => {
+    setAutoMode(prev => !prev);
   };
 
   if (loading) {
@@ -125,20 +130,26 @@ export default function DebateForm({ onStartDebate }: DebateFormProps) {
           </div>
         </div>
         
-        <div className="mb-6">
-          <label htmlFor="rounds" className="block text-sm font-medium text-gray-700 mb-1">
-            辩论回合数
-          </label>
-          <input
-            type="number"
-            id="rounds"
-            value={rounds}
-            onChange={(e) => setRounds(parseInt(e.target.value))}
-            min="1"
-            max="10"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
+        {/* 自动辩论设置 */}
+        <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <div className="flex justify-between items-center">
+            <div className="font-medium">自动辩论模式</div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={autoMode} 
+                onChange={toggleAutoMode} 
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              <span className="ml-3 text-sm text-gray-700">
+                {autoMode ? '已启用' : '未启用'}
+              </span>
+            </label>
+          </div>
+          <div className="mt-2 text-xs text-gray-500">
+            启用自动辩论后，系统将在每轮AI回复完成后自动进入下一轮辩论，无需手动点击。每更新完笔记本后，会询问是否继续辩论。
+          </div>
         </div>
         
         <button

@@ -4,16 +4,24 @@ import { useState } from 'react';
 import DebateForm from './components/DebateForm';
 import DebateViewer from './components/DebateViewer';
 import { DebateSession } from './models/types';
+import Link from 'next/link';
 
 export default function Home() {
   const [session, setSession] = useState<DebateSession | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [initialAutoMode, setInitialAutoMode] = useState(false);
 
   // 开始辩论
-  const handleStartDebate = async (topic: string, ai1Id: string, ai2Id: string, rounds: number) => {
+  const handleStartDebate = async (
+    topic: string, 
+    ai1Id: string, 
+    ai2Id: string, 
+    autoMode: boolean
+  ) => {
     setLoading(true);
     setError('');
+    setInitialAutoMode(autoMode);
 
     try {
       const response = await fetch('/api/debate/start', {
@@ -21,7 +29,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ topic, ai1Id, ai2Id, rounds }),
+        body: JSON.stringify({ topic, ai1Id, ai2Id }),
       });
 
       const data = await response.json();
@@ -95,13 +103,15 @@ export default function Home() {
           <DebateViewer 
             session={session} 
             onContinueDebate={handleContinueDebate} 
-            onReset={handleReset} 
+            onReset={handleReset}
+            key={`debate-${session.topic}-${initialAutoMode ? 'auto' : 'manual'}`}
+            initialAutoMode={initialAutoMode}
           />
         ) : null}
         
-        <div className="mt-12 text-center text-sm text-gray-500">
+        <div className="mt-8 text-center text-sm text-gray-500">
           <p>本平台使用OpenAI的gpt-4o-mini模型提供AI辩论服务</p>
-          <p className="mt-1">© {new Date().getFullYear()} AI辩论平台</p>
+          <p className="mt-1">AI笔记本会自动保存，可在<Link href="/notebooks" className="text-blue-500 hover:underline">笔记本管理</Link>中查看</p>
         </div>
       </div>
     </main>

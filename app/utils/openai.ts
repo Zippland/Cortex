@@ -7,7 +7,7 @@ const openai = new OpenAI({
 });
 
 // 默认使用的模型
-const MODEL = 'gpt-4o-mini';
+const MODEL = 'gpt-4o';
 
 /**
  * 确保消息格式符合OpenAI API要求

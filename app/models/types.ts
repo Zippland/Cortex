@@ -3,6 +3,13 @@ export interface AIModel {
   name: string;
   description: string;
   systemPrompt: string;
+  preferences: string[];
+  stance: {
+    progressive: number;
+    analytical: number;
+    emotional: number;
+    risktaking: number;
+  };
 }
 
 export interface DebateMessage {
@@ -13,10 +20,13 @@ export interface DebateMessage {
 
 export interface DebateSession {
   topic: string;
-  rounds: number;
   currentRound: number;
   messages: DebateMessage[];
   ai1: AIModel;
   ai2: AIModel;
   isComplete: boolean;
+  ai1Notebook: string;
+  ai2Notebook: string;
+  lastNotebookUpdateCount: number;
+  userConfirmationNeeded: boolean;
 } 

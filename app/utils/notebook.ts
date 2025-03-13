@@ -1,0 +1,177 @@
+import { DebateSession, DebateMessage, AIModel } from '../models/types';
+import { getAIResponse } from './openai';
+import { readNotebookFromFile, writeNotebookToFile } from './notebookStorage';
+
+// 更新AI笔记本的最大消息数阈值
+export const NOTEBOOK_UPDATE_THRESHOLD = 4;
+
+/**
+ * 生成用于更新笔记本的系统提示词
+ * 强调记录AI的立场、偏好和独特视角
+ */
+function createNotebookUpdatePrompt(ai: AIModel, topic: string, currentNotebook: string): string {
+  const preferencesText = ai.preferences ? ai.preferences.map(p => `- ${p}`).join('\n') : '无特定偏好';
+  const stanceDescription = ai.stance ? 
+    `进步性: ${ai.stance.progressive}/10 (${ai.stance.progressive > 7 ? '高度进步' : ai.stance.progressive > 4 ? '中立' : '较为保守'})\n分析性: ${ai.stance.analytical}/10 (${ai.stance.analytical > 7 ? '高度分析' : ai.stance.analytical > 4 ? '平衡' : '直觉导向'})\n情感性: ${ai.stance.emotional}/10 (${ai.stance.emotional > 7 ? '高度情感' : ai.stance.emotional > 4 ? '平衡' : '理性克制'})\n风险接受度: ${ai.stance.risktaking}/10 (${ai.stance.risktaking > 7 ? '勇于冒险' : ai.stance.risktaking > 4 ? '平衡' : '谨慎保守'})` 
+    : '无立场信息';
+
+  return `${ai.systemPrompt}
+
+你正在参与关于"${topic}"的辩论。请基于你的角色和立场，分析并更新你的笔记本。
+
+你作为${ai.name}的核心偏好:
+${preferencesText}
+
+你的立场特点:
+${stanceDescription}
+
+请遵循以下规则:
+1. 明确表达你对辩题的基本立场和核心观点
+2. 记录你们已经达成的共识，以及这个共识成立的理由
+3. 记录没有达成的共识，该共识的主要交锋点，记录你方支持的原因和理由，记录对方支持的原因和理由
+4. 记录辩论中出现的关键事实和数据，以便后续引用
+5. 计划你的下一步行动，需要从哪些方面去说服对方达成共识
+6. 突出你作为${ai.name}独特的思考方式和关注点
+7. 格式清晰，包括"我的立场"、"已达成的共识"、"未达成的共识及双方理由"、"关键论据"、"下一步计划"部分
+8. 注意保持你的个性特点和价值观一致性
+
+当前笔记本内容:
+${currentNotebook || "（尚无内容）"}
+
+基于以上内容和最近的对话，请创建一个更新后的笔记本。
+重点突出你的立场、价值观和思考方式，这是你的私人笔记，可以自由表达你的真实观点。
+只返回笔记本内容，不要有其他回复。`;
+}
+
+/**
+ * 异步更新单个AI的笔记本，并保存到文件
+ */
+async function updateSingleNotebook(
+  ai: AIModel, 
+  topic: string, 
+  recentMessages: DebateMessage[]
+): Promise<string> {
+  // 从文件读取当前笔记本内容
+  const currentNotebook = readNotebookFromFile(ai, topic);
+  
+  // 创建消息列表，包含系统提示和最近的消息
+  const messages: DebateMessage[] = [
+    {
+      role: 'system',
+      content: createNotebookUpdatePrompt(ai, topic, currentNotebook)
+    },
+    {
+      role: 'user',
+      content: `请根据以下最近的辩论内容，更新你的笔记本。保持客观分析，突出关键点，并充分体现${ai.name}的视角和立场：
+
+${recentMessages.map(msg => `${msg.name || msg.role}: ${msg.content}`).join('\n\n')}
+
+请直接提供更新后的笔记本内容，不要有其他回复。记住，这是你的私人笔记，你可以自由表达你的真实立场和策略思考。`
+    }
+  ];
+
+  // 获取AI的回复作为更新后的笔记本
+  const updatedNotebook = await getAIResponse(messages);
+  
+  // 将更新后的笔记本内容写入文件
+  writeNotebookToFile(ai, topic, updatedNotebook);
+  
+  return updatedNotebook;
+}
+
+/**
+ * 检查并更新辩论会话中的笔记本
+ * 当消息数量达到阈值时更新笔记本并清理历史
+ */
+export async function updateNotebooksIfNeeded(session: DebateSession): Promise<DebateSession> {
+  const messagesSinceLastUpdate = session.messages.length - (session.lastNotebookUpdateCount || 0);
+  
+  // 如果消息数量未达到阈值，直接返回原会话
+  if (messagesSinceLastUpdate < NOTEBOOK_UPDATE_THRESHOLD) {
+    return session;
+  }
+
+  // 获取需要处理的消息
+  const messagesToProcess = session.messages.slice(
+    session.lastNotebookUpdateCount || 0
+  );
+
+  // 并行更新两个AI的笔记本
+  const [updatedAi1Notebook, updatedAi2Notebook] = await Promise.all([
+    updateSingleNotebook(session.ai1, session.topic, messagesToProcess),
+    updateSingleNotebook(session.ai2, session.topic, messagesToProcess)
+  ]);
+
+  // 更新会话对象，设置需要用户确认
+  return {
+    ...session,
+    ai1Notebook: updatedAi1Notebook,
+    ai2Notebook: updatedAi2Notebook,
+    lastNotebookUpdateCount: session.messages.length,
+    userConfirmationNeeded: true // 添加用户确认标记
+  };
+}
+
+/**
+ * 从文件加载AI笔记本内容
+ */
+export function loadNotebooksFromFiles(session: DebateSession): DebateSession {
+  const ai1Notebook = readNotebookFromFile(session.ai1, session.topic);
+  const ai2Notebook = readNotebookFromFile(session.ai2, session.topic);
+  
+  return {
+    ...session,
+    ai1Notebook,
+    ai2Notebook
+  };
+}
+
+/**
+ * 获取用于发送给OpenAI的消息列表
+ * 包含系统提示、笔记本内容和最近的消息
+ */
+export function getMessagesWithNotebook(
+  session: DebateSession, 
+  aiModel: AIModel
+): DebateMessage[] {
+  // 确定是哪个AI
+  const isAi1 = aiModel.id === session.ai1.id;
+  const notebook = isAi1 ? session.ai1Notebook : session.ai2Notebook;
+  const opponent = isAi1 ? session.ai2.name : session.ai1.name;
+  
+  // 生成简短的偏好和立场描述
+  const preferencesText = aiModel.preferences ? 
+    `你的核心偏好：\n${aiModel.preferences.slice(0, 3).map(p => `- ${p}`).join('\n')}` : '';
+  
+  const stanceDescription = aiModel.stance ? 
+    `你的立场特点：进步性(${aiModel.stance.progressive}/10)，分析性(${aiModel.stance.analytical}/10)，情感性(${aiModel.stance.emotional}/10)，风险接受度(${aiModel.stance.risktaking}/10)` 
+    : '';
+  
+  // 创建包含笔记本的系统提示
+  const systemPromptWithNotebook = `${aiModel.systemPrompt}
+
+辩题: "${session.topic}"
+
+你是${aiModel.name}，正在与${opponent}进行辩论。
+当前是第${session.currentRound}轮。
+
+${preferencesText}
+
+${stanceDescription}
+
+你的笔记本(包含你的立场、思考和策略):
+${notebook || "（尚无内容）"}
+
+请基于以上信息和辩论历史，提供一个有理有据、立场一致的回应。保持你的角色特点和价值观，坚定地表达你的立场，同时注意辩论策略和说服力。`;
+
+  // 获取自上次笔记本更新后的消息
+  const recentMessages = session.messages.slice(
+    session.lastNotebookUpdateCount || 0
+  );
+
+  // 返回完整的消息列表
+  return [
+    { role: 'system', content: systemPromptWithNotebook },
+    ...recentMessages
+  ];
+} 
