@@ -50,7 +50,7 @@ export default function RootLayout({
         </main>
         <footer className="py-4 border-t border-gray-200">
           <div className="max-w-6xl mx-auto px-4 text-center text-sm text-gray-500">
-            <p>© {new Date().getFullYear()} Cortex - 笔记本持久化版</p>
+            <p>© {new Date().getFullYear()} Cortex - 2.0</p>
           </div>
         </footer>
       </body>

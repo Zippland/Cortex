@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     
     if (session.messages.length > 1) {
       // 如果不是第一轮，提示AI回应对方的发言
-      finalPrompt = `请你作为${currentAI.name}，针对辩题"${session.topic}"和上述对话内容，进行回应。不要在回复开头重复你的角色名称，直接开始你的论述。`;
+      finalPrompt = `请你作为${currentAI.name}，针对辩题"${session.topic}"和上述对话内容，针对对方的漏洞有理有据地回击，始终在回应对方的话而不是另起新的话题。不要在回复开头重复你的角色名称，直接开始你的论述。`;
     } else {
       // 如果是第一轮，提示AI开始辩论
       finalPrompt = `请你作为${currentAI.name}，针对辩题"${session.topic}"开始辩论，阐述你的初始观点。不要在回复开头重复你的角色名称，直接开始你的论述。`;

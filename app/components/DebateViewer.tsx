@@ -66,12 +66,18 @@ export default function DebateViewer({
       
       // 如果是自动模式，则自动继续辩论
       if (autoMode && !session.isComplete) {
-        setTimeout(() => {
-          handleContinueDebate();
-        }, 2000); // 延长延迟，让用户有足够时间看到更新提示
+        const timeoutId = setTimeout(() => {
+          // 再次检查自动模式状态，以防在延迟期间用户关闭了自动模式
+          if (autoMode) {
+            handleContinueDebate();
+          }
+        }, 2000);
+        
+        // 清理函数，防止组件卸载时出现问题
+        return () => clearTimeout(timeoutId);
       }
     }
-  }, [session.userConfirmationNeeded]);
+  }, [session.userConfirmationNeeded, autoMode, session.isComplete]);
 
   // 监听笔记本内容变化
   useEffect(() => {
@@ -91,7 +97,7 @@ export default function DebateViewer({
       // 标记笔记本已更新，触发动画效果
       setNotebookUpdated(true);
       
-      // 如果当前是写笔记本状态，则重置加载状态
+      // 如果当前是写笔记本状态，则重置加载状态，并显示更新完成提示
       if (loadingType === 'writing-notebook') {
         setLoadingType('none');
         setLoading(false);
@@ -103,6 +109,13 @@ export default function DebateViewer({
         setTimeout(() => {
           setShowNotebookUpdateAlert(false);
         }, 3000);
+        
+        // 如果是自动模式，则延迟后自动继续辩论
+        if (autoMode && !session.isComplete) {
+          setTimeout(() => {
+            handleContinueDebate();
+          }, 2000);
+        }
       }
       
       // 5秒后重置更新状态，动画效果消失
@@ -112,9 +125,12 @@ export default function DebateViewer({
     }
 
     // 更新引用的笔记本内容
-    prevAi1NotebookRef.current = session.ai1Notebook || '';
-    prevAi2NotebookRef.current = session.ai2Notebook || '';
-  }, [session.ai1Notebook, session.ai2Notebook]);
+    // 只在非写笔记本状态下更新引用，避免干扰检测
+    if (loadingType !== 'writing-notebook') {
+      prevAi1NotebookRef.current = session.ai1Notebook || '';
+      prevAi2NotebookRef.current = session.ai2Notebook || '';
+    }
+  }, [session.ai1Notebook, session.ai2Notebook, autoMode, session.isComplete, loadingType]);
 
   // 初始化前一次消息数量
   useEffect(() => {
@@ -126,11 +142,11 @@ export default function DebateViewer({
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [session.messages.length]);
+  }, [session.messages.length, loading, loadingType, showNotebookUpdateAlert]);
 
   // 处理继续辩论
   const handleContinueDebate = async () => {
-    if (loading || session.isComplete) return;
+    if (session.isComplete) return; // 只检查辩论是否结束，移除loading检查
     
     setLoading(true);
     
@@ -140,22 +156,40 @@ export default function DebateViewer({
       setLoadingType('writing-notebook');
       // 隐藏笔记本更新提示
       setShowNotebookUpdateAlert(false);
+      
+      // 重要：保存当前笔记本内容作为基准，这样可以在笔记本内容变化时正确检测
+      prevAi1NotebookRef.current = session.ai1Notebook || '';
+      prevAi2NotebookRef.current = session.ai2Notebook || '';
     } else {
       // 否则是在等待AI发言
       setLoadingType('speaking');
     }
     
-    await onContinueDebate();
-    
-    // 完成后重置加载状态
-    // 注意：这部分可能在其他useEffect中被覆盖，如笔记本更新或消息增加时
-    setLoading(false);
-    setLoadingType('none');
+    try {
+      await onContinueDebate();
+      
+      // 如果是speaking模式，请求完成后可以立即重置状态
+      // 但如果是writing-notebook模式，则等待笔记本内容变化检测来重置状态
+      if (loadingType === 'speaking') {
+        setLoading(false);
+        setLoadingType('none');
+      }
+      // 注意：writing-notebook模式下的状态重置将由监听笔记本内容变化的useEffect处理
+    } catch (error) {
+      // 发生错误时总是重置状态
+      console.error("继续辩论时出错:", error);
+      setLoading(false);
+      setLoadingType('none');
+    }
   };
 
   // 切换自动模式
   const toggleAutoMode = () => {
+    // 即使在加载中也允许切换自动模式
     setAutoMode(prev => !prev);
+    
+    // 记录到控制台，帮助调试
+    console.log("自动模式已切换为:", !autoMode);
   };
 
   // 获取消息发送者的名称
@@ -223,7 +257,7 @@ export default function DebateViewer({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full relative">
       <div className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 shadow-sm border border-indigo-100">
         <h1 className="text-2xl md:text-3xl font-bold text-center mb-4 text-gray-800">
           辩题：{session.topic}
@@ -278,7 +312,7 @@ export default function DebateViewer({
               checked={autoMode} 
               onChange={toggleAutoMode} 
               className="sr-only peer"
-              disabled={session.isComplete || loading}
+              disabled={session.isComplete}
             />
             <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
           </label>
@@ -341,43 +375,8 @@ export default function DebateViewer({
         </div>
       )}
 
-      {/* 笔记本内容展示 - 添加更新高亮效果 */}
-      {showNotebooks && (
-        <div className="mb-8 space-y-5">
-          <div className={`p-5 rounded-xl border border-blue-200 bg-blue-50 shadow-sm transition-all ${notebookUpdated ? 'animate-pulse-light border-blue-400' : ''}`}>
-            <div className="flex items-center mb-3 text-blue-700">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
-              </svg>
-              <div className="font-medium">{session.ai1.name}的笔记本</div>
-              {notebookUpdated && (
-                <span className="ml-2 text-xs px-2 py-0.5 bg-blue-200 text-blue-800 rounded-full">新更新</span>
-              )}
-            </div>
-            <div className="whitespace-pre-wrap text-sm bg-white border border-blue-100 p-4 rounded-lg shadow-inner">
-              {session.ai1Notebook || '（暂无笔记）'}
-            </div>
-          </div>
-          
-          <div className={`p-5 rounded-xl border border-green-200 bg-green-50 shadow-sm transition-all ${notebookUpdated ? 'animate-pulse-light border-green-400' : ''}`}>
-            <div className="flex items-center mb-3 text-green-700">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
-              </svg>
-              <div className="font-medium">{session.ai2.name}的笔记本</div>
-              {notebookUpdated && (
-                <span className="ml-2 text-xs px-2 py-0.5 bg-green-200 text-green-800 rounded-full">新更新</span>
-              )}
-            </div>
-            <div className="whitespace-pre-wrap text-sm bg-white border border-green-100 p-4 rounded-lg shadow-inner">
-              {session.ai2Notebook || '（暂无笔记）'}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 对话消息区域 - 左右布局 */}
-      <div className="mb-8 max-h-[600px] overflow-y-auto p-4 pr-4 custom-scrollbar rounded-xl border border-gray-100 bg-gray-50 shadow-inner">
+      <div className="mb-8 max-h-[600px] overflow-y-auto p-4 pr-4 custom-scrollbar rounded-xl border border-gray-100 bg-gray-50 shadow-inner" id="messages-container">
         <div className="space-y-4">
           {session.messages.map((message, index) => {
             // 忽略系统消息，通常这些是内部提示
@@ -424,6 +423,7 @@ export default function DebateViewer({
           {/* 加载状态指示器 */}
           {renderLoadingIndicator()}
           
+          {/* 此div必须是消息容器中的最后一个元素，以便滚动正确 */}
           <div ref={messagesEndRef} />
         </div>
       </div>
@@ -463,6 +463,102 @@ export default function DebateViewer({
             <p className="text-sm">您可以点击"重新开始"发起新的辩论</p>
           </div>
         </div>
+      )}
+
+      {/* 右侧滑出笔记本面板 */}
+      <div 
+        className={`fixed top-0 right-0 w-full md:w-1/2 lg:w-2/5 h-full bg-white shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${
+          showNotebooks ? 'translate-x-0' : 'translate-x-full'
+        } flex flex-col`}
+      >
+        {/* 笔记本头部 */}
+        <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-amber-50 to-amber-100">
+          <h2 className="text-lg font-bold text-amber-800 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+            </svg>
+            AI笔记本
+          </h2>
+          <div className="flex items-center">
+            {/* 在笔记本面板中添加自动继续的开关 */}
+            <div className="inline-flex items-center mr-4 px-2 py-1 bg-amber-50 border border-amber-200 rounded-lg">
+              <span className="text-xs font-medium text-amber-700 mr-2">自动继续:</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={autoMode} 
+                  onChange={toggleAutoMode} 
+                  className="sr-only peer"
+                  disabled={session.isComplete}
+                />
+                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+              </label>
+            </div>
+            <button 
+              onClick={() => setShowNotebooks(false)}
+              className="text-gray-500 hover:text-gray-700 focus:outline-none"
+              aria-label="关闭笔记本"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        {/* 笔记本内容区域 - 可滚动 */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar bg-gray-50">
+          <div className={`p-5 rounded-xl border border-blue-200 bg-blue-50 shadow-sm transition-all ${notebookUpdated ? 'animate-pulse-light border-blue-400' : ''}`}>
+            <div className="flex items-center mb-3 text-blue-700">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+              </svg>
+              <div className="font-medium">{session.ai1.name}的笔记本</div>
+              {notebookUpdated && (
+                <span className="ml-2 text-xs px-2 py-0.5 bg-blue-200 text-blue-800 rounded-full">新更新</span>
+              )}
+            </div>
+            <div className="whitespace-pre-wrap text-sm bg-white border border-blue-100 p-4 rounded-lg shadow-inner">
+              {session.ai1Notebook || '（暂无笔记）'}
+            </div>
+          </div>
+          
+          <div className={`p-5 rounded-xl border border-green-200 bg-green-50 shadow-sm transition-all ${notebookUpdated ? 'animate-pulse-light border-green-400' : ''}`}>
+            <div className="flex items-center mb-3 text-green-700">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+              </svg>
+              <div className="font-medium">{session.ai2.name}的笔记本</div>
+              {notebookUpdated && (
+                <span className="ml-2 text-xs px-2 py-0.5 bg-green-200 text-green-800 rounded-full">新更新</span>
+              )}
+            </div>
+            <div className="whitespace-pre-wrap text-sm bg-white border border-green-100 p-4 rounded-lg shadow-inner">
+              {session.ai2Notebook || '（暂无笔记）'}
+            </div>
+          </div>
+        </div>
+        
+        {/* 笔记本底部操作栏 */}
+        <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <button
+            onClick={() => setShowNotebooks(false)}
+            className="w-full py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 shadow-sm transition-all flex items-center justify-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L9.414 11H13a1 1 0 100-2H9.414l1.293-1.293z" clipRule="evenodd" />
+            </svg>
+            返回辩论
+          </button>
+        </div>
+      </div>
+      
+      {/* 背景遮罩 - 只在移动设备上显示 */}
+      {showNotebooks && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setShowNotebooks(false)}
+        ></div>
       )}
 
       <style jsx>{`
