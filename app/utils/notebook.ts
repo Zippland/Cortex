@@ -192,20 +192,17 @@ export function getMessagesWithNotebook(
     `你的立场特点：进步性(${aiModel.stance.progressive}/10)，分析性(${aiModel.stance.analytical}/10)，情感性(${aiModel.stance.emotional}/10)，风险接受度(${aiModel.stance.risktaking}/10)` 
     : '';
   
-  // 分隔符和标题样式
-  const separator = "═".repeat(50);
-  const sectionSeparator = "─".repeat(50);
   
   // 创建包含笔记本和知识库的系统提示，使用更好的格式区分
-  const systemPromptWithNotebookAndKnowledge = `${separator}
+  const systemPromptWithNotebookAndKnowledge = `
 📝 系统指令
-${separator}
+
 
 ${aiModel.systemPrompt}
 
-${sectionSeparator}
+
 🎯 辩论信息
-${sectionSeparator}
+
 
 辩题: "${session.topic}"
 
@@ -215,21 +212,21 @@ ${sectionSeparator}
 ${preferencesText ? `${preferencesText}\n` : ''}
 ${stanceDescription ? `${stanceDescription}\n` : ''}
 
-${separator}
+
 📔 你的笔记本（包含立场、思考和策略）
-${separator}
+
 
 ${notebook || "（尚无内容）"}
 
-${knowledge ? `${separator}
+${knowledge ? `
 📚 你的知识库（参考资料和背景知识）
-${separator}
+
 
 ${knowledge}` : ''}
 
-${separator}
+
 ⚔️ 当前任务
-${separator}
+
 
 请基于以上信息和辩论历史，提供一个有理有据、立场一致的回应。
 保持你的角色特点和价值观，坚定地表达你的立场，同时注意辩论策略和说服力。
