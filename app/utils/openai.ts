@@ -6,8 +6,10 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// 默认使用的模型
-const MODEL = 'gpt-4o-mini';
+// 从环境变量中获取模型配置，如果未设置则使用默认值
+const MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '4000', 10);
+const DEFAULT_TEMPERATURE = parseFloat(process.env.TEMPERATURE || '0.7');
 
 /**
  * 确保消息格式符合OpenAI API要求
@@ -27,7 +29,7 @@ function sanitizeMessages(messages: DebateMessage[]): any[] {
  */
 export async function getAIResponse(
   messages: DebateMessage[],
-  temperature: number = 0.7
+  temperature: number = DEFAULT_TEMPERATURE
 ): Promise<string> {
   try {
     // 打印完整的消息内容到控制台（包含name字段，便于调试）
@@ -41,6 +43,7 @@ export async function getAIResponse(
       model: MODEL,
       messages: sanitizedMessages,
       temperature,
+      max_tokens: MAX_TOKENS,
     });
 
     return response.choices[0].message.content || '无法生成回复';

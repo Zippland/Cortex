@@ -141,7 +141,7 @@ cp .env.local.example .env.local
    
    可选环境变量：
    ```
-   MAX_TOKENS_PER_REQUEST=4000  # 单次API请求的最大token数
+   MAX_TOKENS=4000  # 单次API请求的最大token数
    TEMPERATURE=0.7  # 模型温度设置
    ```
 
@@ -162,60 +162,6 @@ pnpm dev
 
 6. **访问应用**
    打开浏览器访问 [http://localhost:3000](http://localhost:3000)
-
-### 生产环境部署
-
-#### Vercel部署（推荐）
-
-1. **将代码推送到GitHub仓库**
-```bash
-git add .
-git commit -m "Ready for deployment"
-git push origin main
-```
-
-2. **在Vercel中创建新项目**
-   - 登录Vercel账户
-   - 点击"New Project"
-   - 从列表中选择你的GitHub仓库
-   - 在"环境变量"部分添加`OPENAI_API_KEY`和其他必要的环境变量
-   - 点击"Deploy"开始部署
-
-3. **配置自定义域名**（可选）
-   - 在项目设置中点击"Domains"
-   - 添加你的自定义域名
-   - 按照Vercel提供的说明配置DNS记录
-
-#### 独立服务器部署
-
-1. **构建生产版本**
-```bash
-npm run build
-```
-
-2. **启动生产服务器**
-```bash
-npm start
-```
-
-3. **使用进程管理器**（推荐）
-```bash
-# 使用PM2
-npm install -g pm2
-pm2 start npm --name "cortex" -- start
-```
-
-#### Docker部署
-
-1. **构建Docker镜像**
-```bash
-docker build -t cortex-debate .
-```
-
-2. **运行Docker容器**
-```bash
-docker run -p 3000:3000 -e OPENAI_API_KEY=your_key_here cortex-debate
-```
 
 ## 🔧 扩展与自定义
 
