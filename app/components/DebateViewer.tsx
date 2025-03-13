@@ -45,6 +45,8 @@ export default function DebateViewer({
       if (!loading && !session.isComplete && !session.userConfirmationNeeded) {
         // 使用setTimeout确保UI有时间更新
         setTimeout(() => {
+          // 设置加载类型为speaking，因为新消息后应该是等待AI发言
+          setLoadingType('speaking');
           handleContinueDebate();
         }, 100); // 极短的延迟，仅为了让UI有机会更新
       }
@@ -69,6 +71,8 @@ export default function DebateViewer({
         const timeoutId = setTimeout(() => {
           // 再次检查自动模式状态，以防在延迟期间用户关闭了自动模式
           if (autoMode) {
+            // 准备更新笔记本的下一步，设置相应加载类型
+            setLoadingType('writing-notebook');
             handleContinueDebate();
           }
         }, 2000);
@@ -113,6 +117,8 @@ export default function DebateViewer({
         // 如果是自动模式，则延迟后自动继续辩论
         if (autoMode && !session.isComplete) {
           setTimeout(() => {
+            // 下一步将是AI回复，设置适合的加载类型
+            setLoadingType('speaking');
             handleContinueDebate();
           }, 2000);
         }
@@ -159,10 +165,10 @@ export default function DebateViewer({
     }
     
     try {
-    await onContinueDebate();
+      await onContinueDebate();
     } finally {
       // 无论成功还是失败，确保loading状态被重置
-    setLoading(false);
+      setLoading(false);
       setLoadingType('none');
     }
   };

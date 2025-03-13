@@ -17,13 +17,25 @@ function ensureNotebookDirExists(): void {
  * 基于AI模型ID和辩题，确保可以在不同会话中识别同一AI对同一辩题的笔记
  */
 function generateNotebookId(aiId: string, topic: string): string {
-  // 将辩题转换为URL安全的字符串
-  const sanitizedTopic = topic
-    .toLowerCase()
-    .replace(/[^\w\s]/g, '')  // 移除特殊字符
-    .replace(/\s+/g, '-');    // 空格替换为连字符
+  // 处理空主题的情况
+  if (!topic || topic.trim() === '') {
+    const timestamp = new Date().getTime();
+    return `${aiId}-untitled-${timestamp}`;
+  }
   
-  return `${aiId}-${sanitizedTopic}`;
+  // 对文件名进行安全处理，保留中文字符
+  // 移除文件系统不允许的字符: \ / : * ? " < > |
+  const safeTopicName = topic
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, '_'); // 替换不允许的文件名字符为下划线
+  
+  // 限制文件名长度，避免过长
+  const maxLength = 50;
+  const truncatedTopic = safeTopicName.length > maxLength 
+    ? safeTopicName.substring(0, maxLength) + '...' 
+    : safeTopicName;
+  
+  return `${aiId}-${truncatedTopic}`;
 }
 
 /**
