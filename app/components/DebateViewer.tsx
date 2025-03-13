@@ -127,31 +127,23 @@ export default function DebateViewer({
         </div>
       </div>
 
-      {/* 自动辩论控制面板 */}
-      <div className="mb-6 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center">
-            <span className="mr-3 font-medium text-gray-700">自动辩论模式</span>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={autoMode} 
-                onChange={toggleAutoMode} 
-                className="sr-only peer"
-                disabled={session.isComplete || loading}
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-            </label>
-          </div>
-          
-          <div className="text-sm text-gray-600 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            {autoMode 
-              ? <span>自动模式已开启，AI回复后将立即进入下一轮辩论</span> 
-              : <span>点击开关启用自动辩论模式</span>}
-          </div>
+      {/* 自动辩论控制面板 - 改为更紧凑的样式 */}
+      <div className="flex justify-end mb-4">
+        <div className="inline-flex items-center px-3 py-1.5 bg-white border border-gray-200 rounded-lg shadow-sm">
+          <span className="text-xs font-medium text-gray-700 mr-2">自动辩论:</span>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={autoMode} 
+              onChange={toggleAutoMode} 
+              className="sr-only peer"
+              disabled={session.isComplete || loading}
+            />
+            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+          </label>
+          {autoMode && 
+            <span className="ml-2 text-xs text-indigo-600">已开启</span>
+          }
         </div>
       </div>
 
