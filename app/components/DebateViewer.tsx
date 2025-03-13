@@ -97,7 +97,7 @@ export default function DebateViewer({
       // 标记笔记本已更新，触发动画效果
       setNotebookUpdated(true);
       
-      // 如果当前是写笔记本状态，则重置加载状态，并显示更新完成提示
+      // 如果当前是写笔记本状态，则重置加载状态
       if (loadingType === 'writing-notebook') {
         setLoadingType('none');
         setLoading(false);
@@ -125,12 +125,9 @@ export default function DebateViewer({
     }
 
     // 更新引用的笔记本内容
-    // 只在非写笔记本状态下更新引用，避免干扰检测
-    if (loadingType !== 'writing-notebook') {
-      prevAi1NotebookRef.current = session.ai1Notebook || '';
-      prevAi2NotebookRef.current = session.ai2Notebook || '';
-    }
-  }, [session.ai1Notebook, session.ai2Notebook, autoMode, session.isComplete, loadingType]);
+    prevAi1NotebookRef.current = session.ai1Notebook || '';
+    prevAi2NotebookRef.current = session.ai2Notebook || '';
+  }, [session.ai1Notebook, session.ai2Notebook, autoMode, session.isComplete]);
 
   // 初始化前一次消息数量
   useEffect(() => {
@@ -156,29 +153,16 @@ export default function DebateViewer({
       setLoadingType('writing-notebook');
       // 隐藏笔记本更新提示
       setShowNotebookUpdateAlert(false);
-      
-      // 重要：保存当前笔记本内容作为基准，这样可以在笔记本内容变化时正确检测
-      prevAi1NotebookRef.current = session.ai1Notebook || '';
-      prevAi2NotebookRef.current = session.ai2Notebook || '';
     } else {
       // 否则是在等待AI发言
       setLoadingType('speaking');
     }
     
     try {
-      await onContinueDebate();
-      
-      // 如果是speaking模式，请求完成后可以立即重置状态
-      // 但如果是writing-notebook模式，则等待笔记本内容变化检测来重置状态
-      if (loadingType === 'speaking') {
-        setLoading(false);
-        setLoadingType('none');
-      }
-      // 注意：writing-notebook模式下的状态重置将由监听笔记本内容变化的useEffect处理
-    } catch (error) {
-      // 发生错误时总是重置状态
-      console.error("继续辩论时出错:", error);
-      setLoading(false);
+    await onContinueDebate();
+    } finally {
+      // 无论成功还是失败，确保loading状态被重置
+    setLoading(false);
       setLoadingType('none');
     }
   };
@@ -306,22 +290,22 @@ export default function DebateViewer({
         {/* 自动继续开关 */}
         <div className="inline-flex items-center px-3 py-1.5 bg-white border border-gray-200 rounded-lg shadow-sm">
           <span className="text-xs font-medium text-gray-700 mr-2">自动继续:</span>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={autoMode} 
-              onChange={toggleAutoMode} 
-              className="sr-only peer"
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={autoMode} 
+                onChange={toggleAutoMode} 
+                className="sr-only peer"
               disabled={session.isComplete}
-            />
+              />
             <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-          </label>
+            </label>
           {autoMode && 
             <span className="ml-2 text-xs text-indigo-600">已开启</span>
           }
         </div>
-      </div>
-
+          </div>
+          
       {/* 笔记本更新全局提示 - 无论笔记本是否打开都显示 */}
       {showNotebookUpdateAlert && (
         <div className="fixed top-4 right-4 z-50 bg-amber-100 border-l-4 border-amber-500 text-amber-700 p-4 rounded shadow-lg animate-fade-in max-w-sm">
@@ -354,7 +338,7 @@ export default function DebateViewer({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
             <h3 className="font-medium text-lg">AI已更新笔记本</h3>
-          </div>
+      </div>
           <p className="text-amber-700 mb-5 pl-8">
             辩论已经进行了一段时间，AI们已经更新了他们的笔记本。您可以查看笔记本内容，然后决定是否继续辩论。
           </p>
@@ -552,7 +536,7 @@ export default function DebateViewer({
           </button>
         </div>
       </div>
-      
+
       {/* 背景遮罩 - 只在移动设备上显示 */}
       {showNotebooks && (
         <div 
