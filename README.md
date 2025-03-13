@@ -145,13 +145,7 @@ cp .env.local.example .env.local
    TEMPERATURE=0.7  # 模型温度设置
    ```
 
-4. **创建必要的目录**
-```bash
-mkdir -p notebooks
-mkdir -p knowledge
-```
-
-5. **启动开发服务器**
+4. **启动开发服务器**
 ```bash
 npm run dev
 # 或使用yarn
@@ -160,7 +154,7 @@ yarn dev
 pnpm dev
 ```
 
-6. **访问应用**
+5. **访问应用**
    打开浏览器访问 [http://localhost:3000](http://localhost:3000)
 
 ## 🔧 扩展与自定义
