@@ -1,109 +1,269 @@
 # Cortex - 思辨
+>让AI思辨碰撞，智慧共生
 
-## 项目概述
+## 📖 项目概述
 
-Cortex思辨是一个基于Next.js和OpenAI API构建的创新型应用，允许两个预设的AI角色就特定辩题进行结构化辩论。平台设计了主席AI主持辩论，并为每个AI角色提供独特的"AI笔记本"功能，记录其思考过程和辩论策略。
+Cortex思辨是一个基于Next.js和大型语言模型构建的创新型应用，旨在模拟思想辩论场景。该平台允许两个预设的AI角色就特定辩题进行结构化、深度的辩论。系统设计了主席AI主持辩论过程，并为每个AI角色提供独特的"AI笔记本"功能，透明地记录其思考过程和辩论策略。这一设计不仅让用户能够观察AI如何构建论证，还能洞察AI在辩论中的思维演变过程。
 
-## 技术架构
 
-- **前端框架**：Next.js 15.2.2，采用App Router架构
-- **UI库**：React 19 + TailwindCSS 4
-- **语言**：TypeScript
-- **AI接口**：OpenAI API，使用gpt-4o-mini模型
-- **状态管理**：React Hooks（useState, useEffect, useRef）
-- **部署**：可直接部署到Vercel平台
+## 🛠️ 技术架构
 
-## 核心功能
+### 前端技术
 
-### 1. 多角色AI辩论
+- **框架**：Next.js 15.2.2，采用App Router架构
+- **UI库**：React 19 + TailwindCSS 4.0 + Shadcn UI组件
+- **开发语言**：TypeScript 5.5.0
+- **状态管理**：React Hooks（useState, useEffect, useRef, useReducer）
+- **动画效果**：Framer Motion
+- **响应式设计**：支持桌面、平板和移动设备
 
-- **角色系统**：预设包括哲学家、科学家、政治家三种截然不同的AI角色
-- **角色个性化**：每个AI角色具有独特的系统提示词、偏好和立场倾向
-- **立场量化**：通过进步性、分析性、情感性、风险接受度四个维度量化AI立场
-- **主席AI**：独立的主席AI负责开场白和辩论主持，确保辩论进行有序
+### 后端技术
+
+- **API框架**：Next.js API Routes
+- **AI接口**：OpenAI API，默认使用gpt-4o-mini模型（可配置）
+- **文件系统**：基于Node.js fs模块的笔记本持久化存储
+- **缓存策略**：内存缓存 + 本地存储
+- **错误处理**：全局错误边界 + 异步错误处理中间件
+
+### 部署选项
+
+- **开发环境**：本地Node.js服务器
+- **生产环境**：Vercel平台（推荐）、Docker容器或任何支持Node.js的服务器
+
+## ✨ 核心功能
+
+### 1. 多角色AI辩论系统
+
+- **丰富的角色库**：
+  - **哲学家**：注重概念分析和原则探讨
+  - **科学家**：强调实证研究和方法论
+  - **政治家**：关注实践性和社会影响
+  - **可自定义扩展更多角色类型**
+
+- **精细的角色设计**：
+  - 每个AI角色具有独特的系统提示词，确保回答风格一致
+  - 通过偏好设置引导AI形成特定的思考模式
+  - 立场设置确保AI在辩论中保持一致性
+
+- **立场量化系统**：
+  - **进步性**（0-10）：对新思想和变革的接受度
+  - **分析性**（0-10）：逻辑推理vs直觉思考的偏好
+  - **情感性**（0-10）：表达中情感因素的占比
+  - **风险接受度**（0-10）：对不确定性的态度
+  
+  这些维度共同构成一个立体的AI人格，使辩论更加多样化和真实。
+
+- **主席AI**：
+  - 独立的中立角色，负责主持整个辩论
+  - 提供开场白和辩题介绍
+  - 在辩论过程中进行适当引导和总结
+  - 确保辩论遵循结构化流程
+  - 在辩论偏离主题时进行调整
 
 ### 2. AI笔记本系统
 
-- **自动笔记记录**：AI在辩论过程中自动记录思考、立场和策略
-- **文件持久化**：笔记本内容保存到本地文件系统，确保内容持久化
-- **智能更新**：当对话积累到阈值时，自动更新笔记本内容
-- **思考透明化**：让用户看到AI如何思考和制定辩论策略
+- **实时思考记录**：
+  - AI在辩论过程中实时记录自己的思考过程
+  - 记录对手论点的分析和评估
+  - 规划未来的辩论策略和关键点
 
-### 3. 交互功能
+- **智能更新机制**：
+  - 设置消息积累阈值，当新消息数量达到阈值时触发笔记本更新
+  - 自动合并和组织新信息，避免重复
+  - 结构化整理思考内容，形成连贯的笔记
 
-- **手动/自动模式**：支持手动推进辩论或全自动辩论模式
-- **笔记本查看**：随时查看当前AI的笔记本内容
-- **灵活主题**：用户可以自由指定任何辩题，系统自动分配角色开始辩论
+- **文件持久化**：
+  - 笔记本内容保存为本地Markdown文件
+  - 文件命名格式：`[AI角色]-[辩题].md`
+  - 支持中文和其他Unicode字符的文件名
+  - 自动创建文件目录，确保文件系统完整性
 
-## 系统架构
+- **知识库集成**：
+  - 支持为每个AI角色配置专属知识库
+  - 知识库内容会融入系统提示，增强AI的专业性
+  - 知识库以Markdown格式存储，便于编辑和管理
 
-### 前端组件
+### 3. 用户交互功能
 
-- **DebateForm**：用户创建新辩论的表单组件
-- **DebateViewer**：展示辩论内容、控制辩论进程、显示笔记本
+- **辩论控制**：
+  - **手动模式**：用户控制辩论节奏，手动推进下一步
+  - **自动模式**：系统自动进行辩论，用户可随时暂停
+  - **回合设置**：支持设置辩论的最大回合数
+  - **进度显示**：清晰显示当前辩论进度和回合数
 
-### 后端API
+- **实时笔记本查看**：
+  - 随时切换查看参与辩论的任一AI笔记本
+  - 笔记本内容实时更新，反映AI最新思考
+  - 支持笔记本内容的复制和导出
 
-- **/api/debate/start**：开始新辩论，获取主席开场白
-- **/api/debate/continue**：继续辩论，获取下一个AI的回应
-- **/api/models**：获取可用的AI模型信息
+- **主题自定义**：
+  - 用户可自由指定任何辩题
+  - 系统智能分析辩题，自动为AI分配合适的立场
+  - 支持保存和加载历史辩题
 
-### 数据模型
+## 🚀 快速开始
 
-- **AIModel**：AI角色的定义，包含ID、名称、描述、系统提示词、偏好和立场
-- **DebateSession**：辩论会话，包含主题、回合数、消息历史、参与AI及笔记本状态
-- **DebateMessage**：辩论消息，包含角色、内容和发言者名称
+### 系统要求
 
-## 快速开始
+- **Node.js**: 18.0.0或更高版本
+- **npm**: 9.0.0或更高版本
+- **内存**: 至少4GB RAM（推荐8GB以上）
+- **存储**: 至少100MB可用空间
+- **OpenAI API密钥**：需支持gpt-4o-mini或其他GPT-4模型
 
-### 前提条件
+### 详细安装步骤
 
-- Node.js 18.0.0或更高版本
-- OpenAI API密钥（需支持gpt-4o-mini模型）
-
-### 安装步骤
-
-1. 克隆仓库
+1. **克隆仓库**
 ```bash
 git clone https://github.com/zippland/cortex.git
+cd cortex
 ```
 
-2. 安装依赖
+2. **安装依赖**
 ```bash
 npm install
+# 或使用yarn
+yarn install
+# 或使用pnpm
+pnpm install
 ```
 
-3. 配置环境变量
+3. **配置环境变量**
 ```bash
 cp .env.local.example .env.local
 ```
-   编辑`.env.local`文件，添加你的OpenAI API密钥。
+   
+   编辑`.env.local`文件，至少需要设置以下变量：
+   ```
+   OPENAI_API_KEY=your_openai_api_key_here
+   OPENAI_MODEL=gpt-4o-mini  # 或其他支持的模型
+   ```
+   
+   可选环境变量：
+   ```
+   MAX_TOKENS_PER_REQUEST=4000  # 单次API请求的最大token数
+   TEMPERATURE=0.7  # 模型温度设置
+   ```
 
-4. 启动开发服务器
+4. **创建必要的目录**
 ```bash
-npm run dev
+mkdir -p notebooks
+mkdir -p knowledge
 ```
 
-5. 访问 [http://localhost:3000](http://localhost:3000) 开始使用应用
+5. **启动开发服务器**
+```bash
+npm run dev
+# 或使用yarn
+yarn dev
+# 或使用pnpm
+pnpm dev
+```
 
-### 部署到Vercel
+6. **访问应用**
+   打开浏览器访问 [http://localhost:3000](http://localhost:3000)
 
-项目可直接通过GitHub仓库部署到Vercel平台：
+### 生产环境部署
 
-1. 将代码推送到GitHub仓库
-2. 在Vercel中创建新项目并连接仓库
-3. 设置环境变量`OPENAI_API_KEY`
-4. 部署项目
+#### Vercel部署（推荐）
 
-## 扩展与自定义
+1. **将代码推送到GitHub仓库**
+```bash
+git add .
+git commit -m "Ready for deployment"
+git push origin main
+```
+
+2. **在Vercel中创建新项目**
+   - 登录Vercel账户
+   - 点击"New Project"
+   - 从列表中选择你的GitHub仓库
+   - 在"环境变量"部分添加`OPENAI_API_KEY`和其他必要的环境变量
+   - 点击"Deploy"开始部署
+
+3. **配置自定义域名**（可选）
+   - 在项目设置中点击"Domains"
+   - 添加你的自定义域名
+   - 按照Vercel提供的说明配置DNS记录
+
+#### 独立服务器部署
+
+1. **构建生产版本**
+```bash
+npm run build
+```
+
+2. **启动生产服务器**
+```bash
+npm start
+```
+
+3. **使用进程管理器**（推荐）
+```bash
+# 使用PM2
+npm install -g pm2
+pm2 start npm --name "cortex" -- start
+```
+
+#### Docker部署
+
+1. **构建Docker镜像**
+```bash
+docker build -t cortex-debate .
+```
+
+2. **运行Docker容器**
+```bash
+docker run -p 3000:3000 -e OPENAI_API_KEY=your_key_here cortex-debate
+```
+
+## 🔧 扩展与自定义
 
 ### 添加新的AI角色
 
-1. 在`app/models`目录创建新的TypeScript文件（如`economist.ts`）
-2. 使用AIModel接口定义角色属性
-3. 在`app/models/index.ts`中注册新角色
+1. **创建角色定义文件**
+   在`app/models`目录创建新的TypeScript文件（如`economist.ts`）:
 
 ```typescript
+import { AIModel } from '../types';
+
+const economist: AIModel = {
+  id: 'economist',
+  name: '经济学家',
+  description: '专注于经济分析和市场规律，擅长从经济学视角分析社会问题',
+  systemPrompt: `你是一位资深经济学家，擅长运用经济学理论和数据分析来探讨问题。
+在辩论中，你应当:
+- 关注激励机制和市场效率
+- 使用经济学术语和概念
+- 引用经济学理论和实证研究
+- 考虑成本效益和长期经济影响
+- 保持客观但不忽视社会公平`,
+  preferences: [
+    '经常引用经济学家的观点和经济学理论',
+    '使用数据和统计信息支持观点',
+    '分析问题的经济成本和效益',
+    '从市场机制角度思考问题',
+    '关注长期经济可持续性'
+  ],
+  stance: {
+    progressiveness: 6,
+    analytical: 8,
+    emotional: 3,
+    riskTolerance: 5
+  },
+  portraitUrl: '/portraits/economist.png'
+};
+
+export default economist;
+```
+
+2. **注册新角色**
+   在`app/models/index.ts`中注册新角色:
+
+```typescript
+import philosopher from './philosopher';
+import scientist from './scientist';
+import politician from './politician';
 import economist from './economist';
 
 export const aiModels: AIModel[] = [
@@ -114,15 +274,55 @@ export const aiModels: AIModel[] = [
 ];
 ```
 
-### 自定义AI立场参数
+### 自定义知识库
 
-每个AI角色可以通过以下四个维度（0-10分）定义其立场特点：
+1. **创建知识库文件**
+   在`knowledge`目录创建新的Markdown文件，文件名应与AI角色ID一致:
 
-- **进步性**：表示AI对新事物的接受程度，高分表示更进步
-- **分析性**：表示AI的思考方式，高分表示更倾向于逻辑分析
-- **情感性**：表示AI的表达方式，高分表示更情感化
-- **风险接受度**：表示AI的决策偏好，高分表示更愿意接受风险
+```
+knowledge/economist.md
+```
 
-## 许可证
+内容示例:
+```markdown
+# 经济学知识库
+
+## 核心经济学理论
+- 供需理论
+- 博弈论
+- 宏观经济政策
+- 行为经济学
+
+## 主要经济学流派
+- 古典经济学
+- 凯恩斯主义
+- 新自由主义
+- 制度经济学
+
+## 重要经济现象解释
+...
+```
+
+2. **知识库将自动加载**
+   系统会在生成AI回复时自动读取并融入相应的知识库内容
+
+## 🤝 贡献指南
+
+欢迎为Cortex思辨项目做出贡献！以下是贡献流程：
+
+1. Fork仓库并克隆到本地
+2. 创建新的特性分支: `git checkout -b feature/amazing-feature`
+3. 提交你的更改: `git commit -m 'Add some amazing feature'`
+4. 推送到分支: `git push origin feature/amazing-feature`
+5. 提交Pull Request
+
+### 代码风格指南
+
+- 遵循TypeScript官方风格指南
+- 使用ESLint和Prettier保持代码风格一致
+- 组件使用函数式组件和React Hooks
+- 所有公共函数和组件需要添加JSDoc注释
+
+## 📄 许可证
 
 MIT

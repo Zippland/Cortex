@@ -5,10 +5,35 @@ import { AIModel } from '../models/types';
 // 笔记本文件存储目录
 const NOTEBOOK_DIR = path.join(process.cwd(), 'notebooks');
 
-// 确保笔记本目录存在
+// 知识库文件存储目录
+const KNOWLEDGE_DIR = path.join(process.cwd(), 'knowledge');
+
+// 确保目录存在 (在导入时执行)
+(function ensureDirectoriesExist() {
+  // 确保笔记本目录存在
+  if (!fs.existsSync(NOTEBOOK_DIR)) {
+    fs.mkdirSync(NOTEBOOK_DIR, { recursive: true });
+    console.log('已创建笔记本目录:', NOTEBOOK_DIR);
+  }
+  
+  // 确保知识库目录存在
+  if (!fs.existsSync(KNOWLEDGE_DIR)) {
+    fs.mkdirSync(KNOWLEDGE_DIR, { recursive: true });
+    console.log('已创建知识库目录:', KNOWLEDGE_DIR);
+  }
+})();
+
+// 确保笔记本目录存在 (旧函数，保留向后兼容性)
 function ensureNotebookDirExists(): void {
   if (!fs.existsSync(NOTEBOOK_DIR)) {
     fs.mkdirSync(NOTEBOOK_DIR, { recursive: true });
+  }
+}
+
+// 确保知识库目录存在 (旧函数，保留向后兼容性)
+function ensureKnowledgeDirExists(): void {
+  if (!fs.existsSync(KNOWLEDGE_DIR)) {
+    fs.mkdirSync(KNOWLEDGE_DIR, { recursive: true });
   }
 }
 
@@ -104,5 +129,26 @@ export function getNotebookMetadata(aiModel: AIModel, topic: string) {
   } catch (error) {
     console.error(`获取笔记本元数据失败:`, error);
     return { exists: false, error: String(error) };
+  }
+}
+
+/**
+ * 从文件读取AI知识库内容
+ * 知识库以AI ID命名，存储在knowledge文件夹中
+ * 如果文件不存在，返回空字符串
+ */
+export function readKnowledgeFromFile(aiModel: AIModel): string {
+  try {
+    ensureKnowledgeDirExists();
+    const filePath = path.join(KNOWLEDGE_DIR, `${aiModel.id}.md`);
+    
+    if (fs.existsSync(filePath)) {
+      return fs.readFileSync(filePath, 'utf-8');
+    }
+    
+    return '';
+  } catch (error) {
+    console.error(`读取知识库文件失败:`, error);
+    return '';
   }
 } 

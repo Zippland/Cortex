@@ -1,6 +1,6 @@
 import { DebateSession, DebateMessage, AIModel } from '../models/types';
 import { getAIResponse } from './openai';
-import { readNotebookFromFile, writeNotebookToFile } from './notebookStorage';
+import { readNotebookFromFile, writeNotebookToFile, readKnowledgeFromFile } from './notebookStorage';
 
 // 更新AI笔记本的最大消息数阈值
 export const NOTEBOOK_UPDATE_THRESHOLD = 4;
@@ -170,7 +170,7 @@ export function loadNotebooksFromFiles(session: DebateSession): DebateSession {
 
 /**
  * 获取用于发送给OpenAI的消息列表
- * 包含系统提示、笔记本内容和最近的消息
+ * 包含系统提示、笔记本内容、知识库内容和最近的消息
  */
 export function getMessagesWithNotebook(
   session: DebateSession, 
@@ -181,6 +181,9 @@ export function getMessagesWithNotebook(
   const notebook = isAi1 ? session.ai1Notebook : session.ai2Notebook;
   const opponent = isAi1 ? session.ai2.name : session.ai1.name;
   
+  // 读取AI的知识库内容
+  const knowledge = readKnowledgeFromFile(aiModel);
+  
   // 生成简短的偏好和立场描述
   const preferencesText = aiModel.preferences ? 
     `你的核心偏好：\n${aiModel.preferences.slice(0, 3).map(p => `- ${p}`).join('\n')}` : '';
@@ -189,22 +192,48 @@ export function getMessagesWithNotebook(
     `你的立场特点：进步性(${aiModel.stance.progressive}/10)，分析性(${aiModel.stance.analytical}/10)，情感性(${aiModel.stance.emotional}/10)，风险接受度(${aiModel.stance.risktaking}/10)` 
     : '';
   
-  // 创建包含笔记本的系统提示
-  const systemPromptWithNotebook = `${aiModel.systemPrompt}
+  // 分隔符和标题样式
+  const separator = "═".repeat(50);
+  const sectionSeparator = "─".repeat(50);
+  
+  // 创建包含笔记本和知识库的系统提示，使用更好的格式区分
+  const systemPromptWithNotebookAndKnowledge = `${separator}
+📝 系统指令
+${separator}
+
+${aiModel.systemPrompt}
+
+${sectionSeparator}
+🎯 辩论信息
+${sectionSeparator}
 
 辩题: "${session.topic}"
 
-你是${aiModel.name}，正在与${opponent}进行辩论。
-当前是第${session.currentRound}轮。
+你是 ${aiModel.name}，正在与 ${opponent} 进行辩论。
+当前是第 ${session.currentRound} 轮。
 
-${preferencesText}
+${preferencesText ? `${preferencesText}\n` : ''}
+${stanceDescription ? `${stanceDescription}\n` : ''}
 
-${stanceDescription}
+${separator}
+📔 你的笔记本（包含立场、思考和策略）
+${separator}
 
-你的笔记本(包含你的立场、思考和策略):
 ${notebook || "（尚无内容）"}
 
-请基于以上信息和辩论历史，提供一个有理有据、立场一致的回应。保持你的角色特点和价值观，坚定地表达你的立场，同时注意辩论策略和说服力。`;
+${knowledge ? `${separator}
+📚 你的知识库（参考资料和背景知识）
+${separator}
+
+${knowledge}` : ''}
+
+${separator}
+⚔️ 当前任务
+${separator}
+
+请基于以上信息和辩论历史，提供一个有理有据、立场一致的回应。
+保持你的角色特点和价值观，坚定地表达你的立场，同时注意辩论策略和说服力。
+注意使用笔记本中的策略和知识库中的信息来支持你的论点。`;
 
   // 获取自上次笔记本更新后的消息
   const recentMessages = session.messages.slice(
@@ -213,7 +242,7 @@ ${notebook || "（尚无内容）"}
 
   // 返回完整的消息列表
   return [
-    { role: 'system', content: systemPromptWithNotebook },
+    { role: 'system', content: systemPromptWithNotebookAndKnowledge },
     ...recentMessages
   ];
 } 
