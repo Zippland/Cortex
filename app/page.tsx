@@ -137,7 +137,7 @@ export default function Home() {
               </svg>
               <span className="font-medium">使用指南</span>
             </div>
-            <p className="text-gray-600">本平台使用OpenAI的gpt-4o模型提供AI辩论服务</p>
+            <p className="text-gray-600">本平台使用 OpenAI 和 Perplexity 提供AI辩论服务</p>
             <p className="mt-2 text-gray-600">
               AI笔记本会自动保存，可在
               <Link href="/notebooks" className="text-indigo-600 hover:text-indigo-800 hover:underline font-medium ml-1">
