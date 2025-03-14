@@ -29,6 +29,6 @@ export interface DebateSession {
   ai1Notebook: string;
   ai2Notebook: string;
   refereeNotebook?: string;
-  lastNotebookUpdateCount: number;
+  lastUpdateRound?: number;
   userConfirmationNeeded: boolean;
 } 

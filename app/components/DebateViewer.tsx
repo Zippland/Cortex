@@ -11,7 +11,7 @@ interface DebateViewerProps {
 }
 
 // 定义加载状态类型
-type LoadingType = 'none' | 'speaking' | 'writing-notebook';
+type LoadingType = 'none' | 'speaking';
 
 export default function DebateViewer({ 
   session, 
@@ -48,6 +48,7 @@ export default function DebateViewer({
         // 使用setTimeout确保UI有时间更新
         setTimeout(() => {
           // 设置加载类型为speaking，因为新消息后应该是等待AI发言
+          setLoading(true); 
           setLoadingType('speaking');
           handleContinueDebate();
         }, 100); // 极短的延迟，仅为了让UI有机会更新
@@ -73,8 +74,9 @@ export default function DebateViewer({
         const timeoutId = setTimeout(() => {
           // 再次检查自动模式状态，以防在延迟期间用户关闭了自动模式
           if (autoMode) {
-            // 准备更新笔记本的下一步，设置相应加载类型
-            setLoadingType('writing-notebook');
+            // 准备继续辩论
+            setLoading(true);
+            setLoadingType('speaking');
             handleContinueDebate();
           }
         }, 2000);
@@ -115,11 +117,9 @@ export default function DebateViewer({
       // 设置笔记本更新标志
       setNotebookUpdated(true);
       
-      // 如果当前是写笔记本状态，则重置加载状态
-      if (loadingType === 'writing-notebook') {
-        setLoadingType('none');
-        setLoading(false);
-      }
+      // 重置加载状态
+      setLoadingType('none');
+      setLoading(false);
       
       // 显示更新提示
       setShowNotebookUpdateAlert(true);
@@ -132,7 +132,8 @@ export default function DebateViewer({
       // 如果是自动模式，则延迟后自动继续辩论
       if (autoMode && !session.isComplete) {
         setTimeout(() => {
-          // 下一步将是AI回复，设置适合的加载类型
+          // 下一步将是AI回复
+          setLoading(true);
           setLoadingType('speaking');
           handleContinueDebate();
         }, 2000);
@@ -162,18 +163,13 @@ export default function DebateViewer({
 
   // 处理继续辩论
   const handleContinueDebate = async () => {
-    if (session.isComplete) return; // 只检查辩论是否结束，移除loading检查
+    if (session.isComplete) return; // 只检查辩论是否结束
     
-    setLoading(true);
-    
-    // 根据用户确认需求设置不同的加载类型
+    // 隐藏笔记本更新提示
     if (session.userConfirmationNeeded) {
-      // 如果需要用户确认，则接下来可能是在写笔记本
-      setLoadingType('writing-notebook');
-      // 隐藏笔记本更新提示
       setShowNotebookUpdateAlert(false);
-    } else {
-      // 否则是在等待AI发言
+      // 无论在何种情况下继续辩论，都需要显示加载状态
+      setLoading(true);
       setLoadingType('speaking');
     }
     
@@ -229,20 +225,6 @@ export default function DebateViewer({
             <div className="flex flex-col">
               <span className="text-sm font-medium">AI正在思考...</span>
               <span className="text-xs opacity-75">正在生成下一轮辩论的回应</span>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (loadingType === 'writing-notebook') {
-      return (
-        <div className="flex justify-center my-4">
-          <div className="bg-amber-50 text-amber-700 px-6 py-3 rounded-lg flex items-center shadow-sm border border-amber-100">
-            <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mr-3"></div>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">正在更新笔记本...</span>
-              <span className="text-xs opacity-75">AI正在整理观点并更新笔记</span>
             </div>
           </div>
         </div>

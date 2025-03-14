@@ -3,9 +3,6 @@ import { getAIResponse, RequestType } from './openai';
 import { readNotebookFromFile, writeNotebookToFile, readKnowledgeFromFile } from './notebookStorage';
 import { chairModel } from '../models';
 
-// 更新AI笔记本的最大消息数阈值
-export const NOTEBOOK_UPDATE_THRESHOLD = 20;
-
 /**
  * 生成用于更新笔记本的系统提示词
  * 强调记录AI的立场、偏好和独特视角
@@ -167,31 +164,30 @@ ${nonChairMessages.map(msg => `${msg.name || msg.role}: ${msg.content}`).join('\
 
 /**
  * 检查并更新辩论会话中的笔记本
- * 当消息数量达到阈值时更新笔记本并清理历史
- * 主席的消息不计入消息数量
+ * 按照轮次更新，每10轮更新一次
  */
 export async function updateNotebooksIfNeeded(session: DebateSession): Promise<DebateSession> {
-  // 过滤掉主席的消息，只计算实际的辩论内容
-  const allMessages = session.messages;
-  const debateMessages = allMessages.filter(msg => msg.name !== chairModel.name);
-  
-  // 获取上次更新时，非主席消息的数量
-  const lastUpdateNonChairCount = session.lastNotebookUpdateCount 
-    ? allMessages.slice(0, session.lastNotebookUpdateCount).filter(msg => msg.name !== chairModel.name).length
-    : 0;
-  
-  // 计算自上次更新以来新增的非主席消息数量
-  const messagesSinceLastUpdate = debateMessages.length - lastUpdateNonChairCount;
-  
-  // 如果消息数量未达到阈值，直接返回原会话
-  if (messagesSinceLastUpdate < NOTEBOOK_UPDATE_THRESHOLD) {
+  // 如果当前已经需要用户确认，说明笔记本已经更新过，直接返回原会话
+  // 这是为了避免在用户点击"继续辩论"时再次更新笔记本
+  if (session.userConfirmationNeeded) {
     return session;
   }
 
-  // 获取需要处理的消息，排除主席消息
-  const messagesToProcess = session.messages.slice(
-    session.lastNotebookUpdateCount || 0
-  ).filter(msg => msg.name !== chairModel.name);
+  // 检查当前轮次是否需要更新笔记本
+  // 如果是10的倍数轮，且不是第0轮，且上次更新轮次不是当前轮次
+  const shouldUpdateOnThisRound = session.currentRound % 10 === 0 && 
+                                 session.currentRound > 0 && 
+                                 session.lastUpdateRound !== session.currentRound;
+  
+  // 如果当前轮次不需要更新，直接返回原会话
+  if (!shouldUpdateOnThisRound) {
+    return session;
+  }
+
+  console.log(`第${session.currentRound}轮，需要更新笔记本`);
+
+  // 过滤掉主席的消息，只获取辩论内容
+  const messagesToProcess = session.messages.filter(msg => msg.name !== chairModel.name);
 
   // 独立更新三个AI的笔记本，避免一个失败影响另外两个
   let updatedAi1Notebook = session.ai1Notebook || "";
@@ -232,8 +228,8 @@ export async function updateNotebooksIfNeeded(session: DebateSession): Promise<D
     }
   }
 
-  // 只有至少有一个笔记本更新成功，才更新lastNotebookUpdateCount
-  const lastUpdateCount = updateSuccess ? session.messages.length : (session.lastNotebookUpdateCount || 0);
+  // 只有至少有一个笔记本更新成功，才更新lastUpdateRound
+  const lastUpdateRound = updateSuccess ? session.currentRound : (session.lastUpdateRound || 0);
 
   // 更新会话对象，设置需要用户确认
   return {
@@ -241,7 +237,7 @@ export async function updateNotebooksIfNeeded(session: DebateSession): Promise<D
     ai1Notebook: updatedAi1Notebook,
     ai2Notebook: updatedAi2Notebook,
     refereeNotebook: updatedRefereeNotebook,
-    lastNotebookUpdateCount: lastUpdateCount,
+    lastUpdateRound: lastUpdateRound,
     userConfirmationNeeded: updateSuccess // 只有在成功更新时才需要用户确认
   };
 }
@@ -332,13 +328,8 @@ ${knowledge}` : ''}
 保持你的角色特点和价值观，坚定地表达你的立场，同时注意辩论策略和说服力。
 注意使用笔记本中的策略和知识库中的信息来支持你的论点。`;
 
-  // 获取自上次笔记本更新后的消息，过滤掉主席的消息
-  const allRecentMessages = session.messages.slice(
-    session.lastNotebookUpdateCount || 0
-  );
-  
   // 过滤掉主席的消息，只保留与辩论直接相关的消息
-  const recentMessages = allRecentMessages.filter(msg => 
+  const recentMessages = session.messages.filter(msg => 
     msg.name !== chairModel.name
   );
 

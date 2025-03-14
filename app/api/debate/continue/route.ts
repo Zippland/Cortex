@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAIResponse } from '../../../utils/openai';
+import { getAIResponse, RequestType } from '../../../utils/openai';
 import { DebateMessage, DebateSession } from '../../../models/types';
 import { updateNotebooksIfNeeded, getMessagesWithNotebook } from '../../../utils/notebook';
 
@@ -20,6 +20,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ session });
     }
 
+    // 先保存用户确认状态，以便确定是否是从确认界面点击"继续辩论"
+    const wasAwaitingConfirmation = session.userConfirmationNeeded;
+
     // 重置用户确认状态
     session.userConfirmationNeeded = false;
 
@@ -30,12 +33,15 @@ export async function POST(request: NextRequest) {
     const currentAI = isFirstAITurn ? session.ai1 : session.ai2;
     const otherAI = isFirstAITurn ? session.ai2 : session.ai1;
 
-    // 根据需要更新笔记本
-    const sessionWithUpdatedNotebooks = await updateNotebooksIfNeeded(session);
-
-    // 如果笔记本更新后设置了需要用户确认，则返回当前会话
-    if (sessionWithUpdatedNotebooks.userConfirmationNeeded) {
-      return NextResponse.json({ session: sessionWithUpdatedNotebooks });
+    // 只有在不是从确认界面点击"继续辩论"时，才尝试更新笔记本
+    let sessionWithUpdatedNotebooks = session;
+    if (!wasAwaitingConfirmation) {
+      sessionWithUpdatedNotebooks = await updateNotebooksIfNeeded(session);
+      
+      // 如果笔记本更新后设置了需要用户确认，则返回当前会话
+      if (sessionWithUpdatedNotebooks.userConfirmationNeeded) {
+        return NextResponse.json({ session: sessionWithUpdatedNotebooks });
+      }
     }
 
     // 使用笔记本获取消息历史
@@ -46,10 +52,10 @@ export async function POST(request: NextRequest) {
     
     if (session.messages.length > 1) {
       // 如果不是第一轮，提示AI回应对方的发言
-      finalPrompt = `请你作为${currentAI.name}，针对辩题"${session.topic}"和上述对话内容，针对对方的漏洞有理有据地回击（包含具体翔实的论证、论据）。结构应当是：前一段回应对方的话，后一段打出自己的论点。但是不管说什么，都要通过论据去论证出来，不能直接瞎说。不要一直揪着同一件事情不放，如果同一个论据论点说了几次没效果就换打法，重点在于要怎么说服对方和裁判，注重辩论赛的观感。字数少一点，不要超过200字。`;
+      finalPrompt = `请你作为${currentAI.name}，针对辩题"${session.topic}"和上述对话内容，针对对方的漏洞有理有据地回击（包含具体翔实的证据、数据）。结构应当是：前一段回应对方的话，后一段打出自己的论点）。但是不管说什么，都要通过论据去论证出来，论据越详实可靠，说服力越大，不能直接瞎说。注意：已经达成共识的内容、已经提过的论据不要重复提，重点在于用新的论据和逻辑，说服对方和裁判去达成新的、对自己有利的共识。字数少一点，不要超过200字。`;
     } else {
       // 如果是第一轮，提示AI开始辩论
-      finalPrompt = `请你作为${currentAI.name}，针对辩题"${session.topic}"开始辩论，阐述你的初始观点（包含具体翔实的论证、论据）。不要在回复开头重复你的角色名称，直接开始你的论述。字数少一点，不要超过200字。`;
+      finalPrompt = `请你作为${currentAI.name}，针对辩题"${session.topic}"开始辩论，这是你的立论环节，阐述你的初始观点（包含具体翔实的论证、论据）。字数少一点，不要超过200字。`;
     }
     
     // 将最终提示添加到消息列表
@@ -62,7 +68,7 @@ export async function POST(request: NextRequest) {
     ];
 
     // 获取AI回复
-    const aiResponse = await getAIResponse(fullMessages);
+    const aiResponse = await getAIResponse(fullMessages, RequestType.DEBATE);
 
     // 更新会话
     const newMessage: DebateMessage = {
