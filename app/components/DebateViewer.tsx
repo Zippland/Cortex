@@ -29,6 +29,8 @@ export default function DebateViewer({
   // 用于跟踪更新前的笔记本内容
   const prevAi1NotebookRef = useRef<string | null>(null);
   const prevAi2NotebookRef = useRef<string | null>(null);
+  // 新增: 裁判笔记本引用
+  const prevRefereeNotebookRef = useRef<string | null>(null);
   // 新增：笔记本更新状态
   const [notebookUpdated, setNotebookUpdated] = useState(false);
   // 新增：显示笔记本更新提示
@@ -89,51 +91,62 @@ export default function DebateViewer({
     if (prevAi1NotebookRef.current === null) {
       prevAi1NotebookRef.current = session.ai1Notebook || '';
       prevAi2NotebookRef.current = session.ai2Notebook || '';
+      if (session.referee) {
+        prevRefereeNotebookRef.current = session.refereeNotebook || '';
+      }
       return;
     }
 
     // 检测笔记本是否有更新
     const notebook1Changed = prevAi1NotebookRef.current !== session.ai1Notebook;
     const notebook2Changed = prevAi2NotebookRef.current !== session.ai2Notebook;
+    const refereeNotebookChanged = session.referee && 
+      prevRefereeNotebookRef.current !== session.refereeNotebook;
 
     // 如果有一个笔记本发生了变化
-    if (notebook1Changed || notebook2Changed) {
-      // 标记笔记本已更新，触发动画效果
+    if (notebook1Changed || notebook2Changed || refereeNotebookChanged) {
+      // 更新引用
+      prevAi1NotebookRef.current = session.ai1Notebook || '';
+      prevAi2NotebookRef.current = session.ai2Notebook || '';
+      if (session.referee) {
+        prevRefereeNotebookRef.current = session.refereeNotebook || '';
+      }
+      
+      // 设置笔记本更新标志
       setNotebookUpdated(true);
       
       // 如果当前是写笔记本状态，则重置加载状态
       if (loadingType === 'writing-notebook') {
         setLoadingType('none');
         setLoading(false);
-        
-        // 显示更新提示
-        setShowNotebookUpdateAlert(true);
-        
-        // 3秒后自动隐藏更新提示
+      }
+      
+      // 显示更新提示
+      setShowNotebookUpdateAlert(true);
+      
+      // 启动自动隐藏计时器
+      const timeoutId = setTimeout(() => {
+        setShowNotebookUpdateAlert(false);
+      }, 3000);
+      
+      // 如果是自动模式，则延迟后自动继续辩论
+      if (autoMode && !session.isComplete) {
         setTimeout(() => {
-          setShowNotebookUpdateAlert(false);
-        }, 3000);
-        
-        // 如果是自动模式，则延迟后自动继续辩论
-        if (autoMode && !session.isComplete) {
-          setTimeout(() => {
-            // 下一步将是AI回复，设置适合的加载类型
-            setLoadingType('speaking');
-            handleContinueDebate();
-          }, 2000);
-        }
+          // 下一步将是AI回复，设置适合的加载类型
+          setLoadingType('speaking');
+          handleContinueDebate();
+        }, 2000);
       }
       
       // 5秒后重置更新状态，动画效果消失
       setTimeout(() => {
         setNotebookUpdated(false);
       }, 5000);
+      
+      // 清理定时器
+      return () => clearTimeout(timeoutId);
     }
-
-    // 更新引用的笔记本内容
-    prevAi1NotebookRef.current = session.ai1Notebook || '';
-    prevAi2NotebookRef.current = session.ai2Notebook || '';
-  }, [session.ai1Notebook, session.ai2Notebook, autoMode, session.isComplete]);
+  }, [session.ai1Notebook, session.ai2Notebook, session.refereeNotebook, autoMode, session.isComplete, loadingType]);
 
   // 初始化前一次消息数量
   useEffect(() => {
@@ -195,6 +208,7 @@ export default function DebateViewer({
   const getSpeakerColor = (message: DebateMessage) => {
     if (message.name === session.ai1.name) return 'bg-blue-50 border-blue-200 text-blue-800';
     if (message.name === session.ai2.name) return 'bg-green-50 border-green-200 text-green-800';
+    if (session.referee && message.name === session.referee.name) return 'bg-purple-50 border-purple-200 text-purple-800';
     return 'bg-gray-50 border-gray-200 text-gray-700';
   };
 
@@ -261,6 +275,12 @@ export default function DebateViewer({
             <span className="mr-2 font-bold">第二位辩手:</span>
             <span className="font-medium">{session.ai2.name}</span>
           </div>
+          {session.referee && (
+            <div className="flex items-center justify-center md:justify-start bg-purple-100 text-purple-700 px-4 py-2 rounded-lg">
+              <span className="mr-2 font-bold">裁判:</span>
+              <span className="font-medium">{session.referee.name}</span>
+            </div>
+          )}
           <div className="flex items-center justify-center md:justify-start bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg">
             <span className="mr-2 font-bold">当前回合:</span>
             <span className="font-medium">{session.currentRound}</span>
@@ -375,12 +395,23 @@ export default function DebateViewer({
             // 确定消息是来自哪个AI
             const isAi1Message = message.name === session.ai1.name;
             const isAi2Message = message.name === session.ai2.name;
+            const isRefereeMessage = session.referee && message.name === session.referee.name;
             
-            // 如果不是AI1或AI2的消息，则居中显示（例如系统通知）
+            // 如果不是AI1或AI2的消息，则居中显示（例如系统通知或裁判消息）
             if (!isAi1Message && !isAi2Message) {
               return (
                 <div key={index} className="flex justify-center my-4">
-                  <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg max-w-[80%] text-sm">
+                  <div className={`px-4 py-2 rounded-lg max-w-[80%] text-sm ${
+                    isRefereeMessage 
+                      ? 'bg-purple-50 border border-purple-200 text-purple-800' 
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {isRefereeMessage && (
+                      <div className="font-bold mb-1 flex items-center text-sm">
+                        <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                        {message.name}
+                      </div>
+                    )}
                     {message.content}
                   </div>
                 </div>
@@ -527,6 +558,25 @@ export default function DebateViewer({
               {session.ai2Notebook || '（暂无笔记）'}
             </div>
           </div>
+          
+          {/* 裁判的笔记本 - 如果存在裁判AI则显示 */}
+          {session.referee && (
+            <div className={`p-5 rounded-xl border border-purple-200 bg-purple-50 shadow-sm transition-all ${notebookUpdated ? 'animate-pulse-light border-purple-400' : ''}`}>
+              <div className="flex items-center mb-3 text-purple-700">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                </svg>
+                <div className="font-medium">{session.referee.name}的笔记本</div>
+                {notebookUpdated && (
+                  <span className="ml-2 text-xs px-2 py-0.5 bg-purple-200 text-purple-800 rounded-full">新更新</span>
+                )}
+              </div>
+              <div className="whitespace-pre-wrap text-sm bg-white border border-purple-100 p-4 rounded-lg shadow-inner">
+                {session.refereeNotebook || '（暂无笔记）'}
+              </div>
+            </div>
+          )}
         </div>
         
         {/* 笔记本底部操作栏 */}

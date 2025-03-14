@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AIModel } from '../models/types';
+import CreateAIModal from './CreateAIModal';
 
 interface DebateFormProps {
   onStartDebate: (topic: string, ai1Id: string, ai2Id: string, autoMode: boolean) => void;
@@ -15,6 +16,7 @@ export default function DebateForm({ onStartDebate }: DebateFormProps) {
   const [models, setModels] = useState<AIModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // 加载AI模型
   useEffect(() => {
@@ -60,6 +62,23 @@ export default function DebateForm({ onStartDebate }: DebateFormProps) {
   // 切换自动模式
   const toggleAutoMode = () => {
     setAutoMode(prev => !prev);
+  };
+
+  // 打开创建AI模态框
+  const openCreateModal = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  // 关闭创建AI模态框
+  const closeCreateModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  // 成功创建AI后的回调
+  const handleAICreated = (newModel: AIModel) => {
+    setModels(prevModels => [...prevModels, newModel]);
+    // 可选择自动选中新创建的AI
+    setAi2Id(newModel.id);
   };
 
   if (loading) {
@@ -110,12 +129,24 @@ export default function DebateForm({ onStartDebate }: DebateFormProps) {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-            <label htmlFor="ai1" className="block text-sm font-medium text-indigo-700 mb-2">
-              <div className="flex items-center">
-                <span className="mr-2">🔵</span>
-                第一位辩手
-              </div>
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label htmlFor="ai1" className="block text-sm font-medium text-indigo-700">
+                <div className="flex items-center">
+                  <span className="mr-2">🔵</span>
+                  第一位辩手
+                </div>
+              </label>
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                创建自定义AI
+              </button>
+            </div>
             <select
               id="ai1"
               value={ai1Id}
@@ -132,12 +163,14 @@ export default function DebateForm({ onStartDebate }: DebateFormProps) {
           </div>
           
           <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-            <label htmlFor="ai2" className="block text-sm font-medium text-green-700 mb-2">
-              <div className="flex items-center">
-                <span className="mr-2">🟢</span>
-                第二位辩手
-              </div>
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label htmlFor="ai2" className="block text-sm font-medium text-green-700">
+                <div className="flex items-center">
+                  <span className="mr-2">🟢</span>
+                  第二位辩手
+                </div>
+              </label>
+            </div>
             <select
               id="ai2"
               value={ai2Id}
@@ -188,6 +221,13 @@ export default function DebateForm({ onStartDebate }: DebateFormProps) {
           开始辩论
         </button>
       </form>
+      
+      {/* 创建AI模态框 */}
+      <CreateAIModal
+        isOpen={isCreateModalOpen}
+        onClose={closeCreateModal}
+        onSuccess={handleAICreated}
+      />
     </div>
   );
 } 

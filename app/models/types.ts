@@ -24,9 +24,11 @@ export interface DebateSession {
   messages: DebateMessage[];
   ai1: AIModel;
   ai2: AIModel;
+  referee?: AIModel;
   isComplete: boolean;
   ai1Notebook: string;
   ai2Notebook: string;
+  refereeNotebook?: string;
   lastNotebookUpdateCount: number;
   userConfirmationNeeded: boolean;
 } 

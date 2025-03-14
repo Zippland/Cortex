@@ -1,6 +1,7 @@
 import { DebateSession, DebateMessage, AIModel } from '../models/types';
 import { getAIResponse } from './openai';
 import { readNotebookFromFile, writeNotebookToFile, readKnowledgeFromFile } from './notebookStorage';
+import { chairModel } from '../models';
 
 // 更新AI笔记本的最大消息数阈值
 export const NOTEBOOK_UPDATE_THRESHOLD = 4;
@@ -44,7 +45,57 @@ ${currentNotebook || "（尚无内容）"}
 }
 
 /**
+ * 生成用于裁判评估的系统提示词
+ * 强调客观评价双方表现，而非辩论立场
+ */
+function createRefereeNotebookPrompt(ai: AIModel, topic: string, currentNotebook: string): string {
+  return `${ai.systemPrompt}
+
+你正在担任关于"${topic}"辩论的裁判。请基于你的专业评判标准，客观分析并更新你的评估笔记本。
+
+作为${ai.name}，你的评判标准包括:
+- 坚持客观公正的评价标准
+- 重视论证的逻辑性和一致性
+- 关注证据的质量和相关性
+- 分析辩论技巧和修辞策略
+- 评估双方回应对方论点的有效性
+- 识别辩论中的关键议题和分歧点
+
+请遵循以下规则创建你的评估笔记:
+1. 保持完全的中立，不偏向任何一方
+2. 分析双方论点的有效性和说服力
+3. 识别双方使用的论证策略和技巧
+4. 评估双方提供的证据质量
+5. 记录双方的逻辑谬误和逻辑强点
+6. 总结辩论的关键转折点和决定性论述
+7. 避免加入个人观点或立场偏好
+8. 提供对辩论过程的专业性评价
+
+格式要求:
+- "辩题分析"：简述辩题的核心争议点和辩论框架
+正方论证有效性评估：
+- "正方分论点"：概括正方所有的主要论点
+- "正方论证质量评估"：评估正方是否有效地达成了对自己分论点的论述（包括论证的质量、逻辑性和证据支持）
+- "论点被反驳有效性"：记录反方对正方以上论点的反驳，以及是否有效
+反方论证有效性评估：
+- "反方分论点"：概括反方所有的主要论点
+- "反方论证质量评估"：评估反方是否有效地达成了对自己分论点的论述（包括论证的质量、逻辑性和证据支持）
+- "论点被反驳有效性"：记录正方对反方以上论点的反驳，以及是否有效
+
+- "关键议题评述"：对关键交锋点和重要议题的客观评价
+- "辩论进展总结"：总结目前辩论的发展态势和主要成果
+
+当前笔记本内容:
+${currentNotebook || "（尚无内容）"}
+
+基于以上内容和最近的对话，请创建一个更新后的评估笔记本。
+重点保持客观中立，提供专业的辩论评析，这是你作为裁判的工作记录。这是你的私人笔记，可以自由表达你的真实观点。
+只返回笔记本内容，不要有其他回复。`;
+}
+
+/**
  * 异步更新单个AI的笔记本，并保存到文件
+ * 自动过滤主席消息
  */
 async function updateSingleNotebook(
   ai: AIModel, 
@@ -56,17 +107,32 @@ async function updateSingleNotebook(
   const currentNotebook = readNotebookFromFile(ai, topic);
   
   try {
+    // 确保过滤掉主席的消息
+    const nonChairMessages = recentMessages.filter(msg => msg.name !== chairModel.name);
+    
+    // 根据AI角色选择合适的prompt生成函数
+    const isReferee = ai.id === 'referee';
+    const promptContent = isReferee 
+      ? createRefereeNotebookPrompt(ai, topic, currentNotebook)
+      : createNotebookUpdatePrompt(ai, topic, currentNotebook);
+    
     // 创建消息列表，包含系统提示和最近的消息
     const messages: DebateMessage[] = [
       {
         role: 'system',
-        content: createNotebookUpdatePrompt(ai, topic, currentNotebook)
+        content: promptContent
       },
       {
         role: 'user',
-        content: `请根据以下最近的辩论内容，更新你的笔记本。保持客观分析，突出关键点，并充分体现${ai.name}的视角和立场：
+        content: isReferee
+          ? `请根据以下最近的辩论内容，更新你的裁判评估笔记本。保持客观中立，提供专业评价，注重逻辑分析和证据评估：
 
-${recentMessages.map(msg => `${msg.name || msg.role}: ${msg.content}`).join('\n\n')}
+${nonChairMessages.map(msg => `${msg.name || msg.role}: ${msg.content}`).join('\n\n')}
+
+请直接提供更新后的评估笔记本内容，不要有其他回复。记住，你是一位公正的裁判，需要客观评价双方表现而非表达个人立场。`
+          : `请根据以下最近的辩论内容，更新你的笔记本。保持客观分析，突出关键点，并充分体现${ai.name}的视角和立场：
+
+${nonChairMessages.map(msg => `${msg.name || msg.role}: ${msg.content}`).join('\n\n')}
 
 请直接提供更新后的笔记本内容，不要有其他回复。记住，这是你的私人笔记，你可以自由表达你的真实立场和策略思考。`
       }
@@ -102,23 +168,35 @@ ${recentMessages.map(msg => `${msg.name || msg.role}: ${msg.content}`).join('\n\
 /**
  * 检查并更新辩论会话中的笔记本
  * 当消息数量达到阈值时更新笔记本并清理历史
+ * 主席的消息不计入消息数量
  */
 export async function updateNotebooksIfNeeded(session: DebateSession): Promise<DebateSession> {
-  const messagesSinceLastUpdate = session.messages.length - (session.lastNotebookUpdateCount || 0);
+  // 过滤掉主席的消息，只计算实际的辩论内容
+  const allMessages = session.messages;
+  const debateMessages = allMessages.filter(msg => msg.name !== chairModel.name);
+  
+  // 获取上次更新时，非主席消息的数量
+  const lastUpdateNonChairCount = session.lastNotebookUpdateCount 
+    ? allMessages.slice(0, session.lastNotebookUpdateCount).filter(msg => msg.name !== chairModel.name).length
+    : 0;
+  
+  // 计算自上次更新以来新增的非主席消息数量
+  const messagesSinceLastUpdate = debateMessages.length - lastUpdateNonChairCount;
   
   // 如果消息数量未达到阈值，直接返回原会话
   if (messagesSinceLastUpdate < NOTEBOOK_UPDATE_THRESHOLD) {
     return session;
   }
 
-  // 获取需要处理的消息
+  // 获取需要处理的消息，排除主席消息
   const messagesToProcess = session.messages.slice(
     session.lastNotebookUpdateCount || 0
-  );
+  ).filter(msg => msg.name !== chairModel.name);
 
-  // 独立更新两个AI的笔记本，避免一个失败影响另一个
+  // 独立更新三个AI的笔记本，避免一个失败影响另外两个
   let updatedAi1Notebook = session.ai1Notebook || "";
   let updatedAi2Notebook = session.ai2Notebook || "";
+  let updatedRefereeNotebook = session.refereeNotebook || "";
   let updateSuccess = false;
   
   try {
@@ -140,6 +218,19 @@ export async function updateNotebooksIfNeeded(session: DebateSession): Promise<D
     console.error(`最终更新AI2笔记本失败:`, error);
     // 保留原笔记本内容
   }
+  
+  // 如果存在裁判AI，则更新裁判的笔记本
+  if (session.referee) {
+    try {
+      // 更新裁判的笔记本
+      const refereeNotebookResult = await updateSingleNotebook(session.referee, session.topic, messagesToProcess);
+      updatedRefereeNotebook = refereeNotebookResult;
+      updateSuccess = true;
+    } catch (error) {
+      console.error(`最终更新裁判笔记本失败:`, error);
+      // 保留原笔记本内容
+    }
+  }
 
   // 只有至少有一个笔记本更新成功，才更新lastNotebookUpdateCount
   const lastUpdateCount = updateSuccess ? session.messages.length : (session.lastNotebookUpdateCount || 0);
@@ -149,6 +240,7 @@ export async function updateNotebooksIfNeeded(session: DebateSession): Promise<D
     ...session,
     ai1Notebook: updatedAi1Notebook,
     ai2Notebook: updatedAi2Notebook,
+    refereeNotebook: updatedRefereeNotebook,
     lastNotebookUpdateCount: lastUpdateCount,
     userConfirmationNeeded: updateSuccess // 只有在成功更新时才需要用户确认
   };
@@ -161,16 +253,24 @@ export function loadNotebooksFromFiles(session: DebateSession): DebateSession {
   const ai1Notebook = readNotebookFromFile(session.ai1, session.topic);
   const ai2Notebook = readNotebookFromFile(session.ai2, session.topic);
   
+  // 如果存在裁判AI，则加载裁判的笔记本
+  let refereeNotebook = '';
+  if (session.referee) {
+    refereeNotebook = readNotebookFromFile(session.referee, session.topic);
+  }
+  
   return {
     ...session,
     ai1Notebook,
-    ai2Notebook
+    ai2Notebook,
+    refereeNotebook
   };
 }
 
 /**
  * 获取用于发送给OpenAI的消息列表
  * 包含系统提示、笔记本内容、知识库内容和最近的消息
+ * 主席的开场白消息不计入历史缓存
  */
 export function getMessagesWithNotebook(
   session: DebateSession, 
@@ -232,9 +332,14 @@ ${knowledge}` : ''}
 保持你的角色特点和价值观，坚定地表达你的立场，同时注意辩论策略和说服力。
 注意使用笔记本中的策略和知识库中的信息来支持你的论点。`;
 
-  // 获取自上次笔记本更新后的消息
-  const recentMessages = session.messages.slice(
+  // 获取自上次笔记本更新后的消息，过滤掉主席的消息
+  const allRecentMessages = session.messages.slice(
     session.lastNotebookUpdateCount || 0
+  );
+  
+  // 过滤掉主席的消息，只保留与辩论直接相关的消息
+  const recentMessages = allRecentMessages.filter(msg => 
+    msg.name !== chairModel.name
   );
 
   // 返回完整的消息列表
