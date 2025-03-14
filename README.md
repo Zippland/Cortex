@@ -3,10 +3,70 @@
 
 ## 📖 项目概述
 
-Cortex思辨是一个基于Next.js和大型语言模型构建的创新型应用，旨在模拟思想辩论场景。该平台允许两个预设的AI角色就特定辩题进行结构化、深度的辩论。系统设计了主席AI主持辩论、裁判AI即时裁决，并为每个AI角色提供独特的"AI笔记本""AI知识库"功能，透明地记录其思考过程和辩论策略，并有庞大的先验知识储备。这一设计不仅让用户能够观察AI如何构建论证，还能洞察AI在辩论中的思维演变过程。
+Cortex思辨是一个基于LLM构建的创新型应用，旨在模拟思想辩论场景。
+
+该平台允许两个预设的AI角色就特定辩题进行结构化、深度的辩论。系统设计了主席AI主持辩论、裁判AI即时裁决，并为每个AI角色提供独特的"AI笔记本"、"AI知识库"功能，不仅能透明地记录其思考过程和辩论策略，还可以让AI有庞大且真实的的先验知识储备。
 
 #### 项目特点
 基于**性格设定**表达立场，基于真实**知识库**进行论证，在**笔记本**上做攻防
+
+![image](image.png)
+
+## 🚀 快速开始
+
+### 系统要求
+
+- **Node.js**: 18.0.0或更高版本
+- **npm**: 9.0.0或更高版本
+- **内存**: 至少4GB RAM（推荐8GB以上）
+- **存储**: 至少100MB可用空间
+- **OpenAI API密钥**：需支持gpt-4o-mini或其他GPT-4模型
+
+### 详细安装步骤
+
+1. **克隆仓库**
+```bash
+git clone https://github.com/zippland/cortex.git
+cd cortex
+```
+
+2. **安装依赖**
+```bash
+npm install
+# 或使用yarn
+yarn install
+# 或使用pnpm
+pnpm install
+```
+
+3. **配置环境变量**
+```bash
+cp .env.local.example .env.local
+```
+   
+   编辑`.env.local`文件，至少需要设置以下变量：
+   ```
+   OPENAI_API_KEY=your_openai_api_key_here
+   OPENAI_MODEL=gpt-4o-mini  # 或其他支持的模型
+   ```
+   
+   可选环境变量：
+   ```
+   MAX_TOKENS=4000  # 单次API请求的最大token数
+   TEMPERATURE=0.7  # 模型温度设置
+   ```
+
+4. **启动开发服务器**
+```bash
+npm run dev
+# 或使用yarn
+yarn dev
+# 或使用pnpm
+pnpm dev
+```
+
+5. **访问应用**
+   打开浏览器访问 [http://localhost:3000](http://localhost:3000)
 
 
 ## 🛠️ 技术架构
@@ -155,62 +215,6 @@ Cortex思辨是一个基于Next.js和大型语言模型构建的创新型应用�
   - 系统智能分析辩题，自动为AI分配合适的立场
   - 支持保存和加载历史辩题
 
-## 🚀 快速开始
-
-### 系统要求
-
-- **Node.js**: 18.0.0或更高版本
-- **npm**: 9.0.0或更高版本
-- **内存**: 至少4GB RAM（推荐8GB以上）
-- **存储**: 至少100MB可用空间
-- **OpenAI API密钥**：需支持gpt-4o-mini或其他GPT-4模型
-
-### 详细安装步骤
-
-1. **克隆仓库**
-```bash
-git clone https://github.com/zippland/cortex.git
-cd cortex
-```
-
-2. **安装依赖**
-```bash
-npm install
-# 或使用yarn
-yarn install
-# 或使用pnpm
-pnpm install
-```
-
-3. **配置环境变量**
-```bash
-cp .env.local.example .env.local
-```
-   
-   编辑`.env.local`文件，至少需要设置以下变量：
-   ```
-   OPENAI_API_KEY=your_openai_api_key_here
-   OPENAI_MODEL=gpt-4o-mini  # 或其他支持的模型
-   ```
-   
-   可选环境变量：
-   ```
-   MAX_TOKENS=4000  # 单次API请求的最大token数
-   TEMPERATURE=0.7  # 模型温度设置
-   ```
-
-4. **启动开发服务器**
-```bash
-npm run dev
-# 或使用yarn
-yarn dev
-# 或使用pnpm
-pnpm dev
-```
-
-5. **访问应用**
-   打开浏览器访问 [http://localhost:3000](http://localhost:3000)
-
 ## 🔧 扩展与自定义
 
 ### 使用自然语言创建AI角色
@@ -332,4 +336,4 @@ export const aiModels: AIModel[] = [
 
 ## 📄 许可证
 
-MIT
+[Aphache 2.0](LICENCE)
