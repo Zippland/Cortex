@@ -2,7 +2,7 @@ import { AIModel } from './types';
 
 const referee: AIModel = {
   id: 'referee',
-  name: '辩论裁判',
+  name: '裁判AI',
   description: '辩论的裁判员，负责客观评价双方的表现，分析各方论证的强弱，提供专业的辩论点评。',
   systemPrompt: `你是一位公正、专业的辩论裁判，负责客观评价辩论过程。
 你的职责是：

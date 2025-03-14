@@ -1,10 +1,10 @@
 import { DebateSession, DebateMessage, AIModel } from '../models/types';
-import { getAIResponse } from './openai';
+import { getAIResponse, RequestType } from './openai';
 import { readNotebookFromFile, writeNotebookToFile, readKnowledgeFromFile } from './notebookStorage';
 import { chairModel } from '../models';
 
 // 更新AI笔记本的最大消息数阈值
-export const NOTEBOOK_UPDATE_THRESHOLD = 4;
+export const NOTEBOOK_UPDATE_THRESHOLD = 20;
 
 /**
  * 生成用于更新笔记本的系统提示词
@@ -138,8 +138,8 @@ ${nonChairMessages.map(msg => `${msg.name || msg.role}: ${msg.content}`).join('\
       }
     ];
 
-    // 获取AI的回复作为更新后的笔记本
-    const updatedNotebook = await getAIResponse(messages);
+    // 获取AI的回复作为更新后的笔记本，使用NOTEBOOK类型以获得更大的token限制
+    const updatedNotebook = await getAIResponse(messages, RequestType.NOTEBOOK);
     
     // 检查回复内容是否有效
     if (!updatedNotebook || updatedNotebook.includes('抱歉，AI回复生成失败')) {

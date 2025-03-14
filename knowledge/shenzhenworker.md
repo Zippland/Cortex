@@ -49,33 +49,3 @@
 ## 未来展望：深圳人才政策的持续优化
 
 展望未来，深圳可能会在教育、医疗等公共服务领域继续发力，以弥补相对于北京的短板。同时，随着粤港澳大湾区建设的深入推进，深圳作为核心城市之一，其区域协同发展优势将进一步凸显，为应届生提供更加广阔的就业和发展空间。应届生在选择就业城市时，也应当根据个人职业规划、专业特点和长期发展目标，综合考量各个因素，做出最适合自己的决策。
-
-Citations:
-[1] https://www.beijing.gov.cn/gate/big5/www.beijing.gov.cn/fuwu/lqfw/ztzl/tzbjhkt/qzftj/tzq/202310/t20231025_3287018.html
-[2] https://www.163.com/dy/article/G5OB1QCF05370H3X.html
-[3] https://www.sohu.com/a/466454402_120244547
-[4] https://stock.jrj.com.cn/2023/05/11163637545421.shtml
-[5] https://app.gaokaozhitongche.com/news/h/QOgEreD2
-[6] https://m.mp.oeeee.com/a/BAAFRD000020200513319560.html
-[7] https://wallstreetcn.com/articles/3741978
-[8] https://www.gelonghui.com/p/276274
-[9] https://finance.sina.cn/2025-03-12/detail-inepkkxi8801400.d.html?vt=4&node_id=76675
-[10] https://www.sznews.com/news/content/2019-03/22/content_21494034.htm
-[11] http://nb.ifeng.com/a/20180705/6705668_0.shtml
-[12] https://www.zhihu.com/question/396999399
-[13] https://www.zhihu.com/question/21355104
-[14] https://gzw.sz.gov.cn/gzrc/rczx/content/post_11844847.html
-[15] https://mse.csu.edu.cn/work/info/1021/3254.htm
-[16] http://sz.chinadaily.com.cn/a/202303/29/WS6423ab7ca3102ada8b235cb4.html
-[17] https://www.zhihu.com/question/392152588
-[18] https://news.qq.com/rain/a/20240921A0005200
-[19] https://www.sohu.com/a/606636973_120946693
-[20] https://m.chyxx.com/industry/202006/869767.html
-[21] https://m.mp.oeeee.com/oe/BAAFRD000020240809984753.html
-[22] https://www.gzdchr.com/szrh/rhzn/2021/1030/9088.html
-[23] https://www.scemvtc.com/subweb/jy/content/?502.html
-[24] https://digi.shenchuang.com/2024/0118/1644845.shtml
-[25] http://m.yaohukou.cn/html/news/yingjieshengruhu/89613.html
-
----
-来自 Perplexity 的回答: pplx.ai/share
