@@ -336,4 +336,4 @@ export const aiModels: AIModel[] = [
 
 ## 📄 许可证
 
-[Aphache 2.0](LICENCE)
+[Aphache 2.0](LICENSE)
